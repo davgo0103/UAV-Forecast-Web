@@ -115,7 +115,7 @@ export default function TimeSlider({ maxHours, hourStatuses, forecastFromNow }: 
       {!isNow && selectedTime && (
         <div className="mt-3 pt-3 border-t border-dark-600 grid grid-cols-3 gap-2 text-center">
           <div className="bg-dark-600 rounded-lg p-2">
-            <div className="text-xs text-slate-400">風速</div>
+            <div className="text-xs text-slate-400">地面風速</div>
             <div className="text-sm font-mono text-white">{selectedTime.windSpeed} <span className="text-xs text-slate-400">m/s</span></div>
           </div>
           <div className="bg-dark-600 rounded-lg p-2">

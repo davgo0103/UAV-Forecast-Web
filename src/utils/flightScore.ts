@@ -141,14 +141,14 @@ export function computeFlightScore(
     {
       label: '風速',
       value: `${windSpeedToEval}`,
-      unit: 'm/s',
+      unit: `m/s · ${(windSpeedToEval * 3.6).toFixed(1)} km/h`,
       status: windResult.status,
       reason: windResult.reason,
     },
     {
       label: '陣風',
       value: `${weather.windGust ?? '-'}`,
-      unit: 'm/s',
+      unit: weather.windGust ? `m/s · ${(weather.windGust * 3.6).toFixed(1)} km/h` : 'm/s',
       status: weather.windGust && weather.windGust >= drone.maxWindSpeed ? 'danger'
         : weather.windGust && weather.windGust >= drone.maxWindSpeed * 0.7 ? 'caution'
         : 'good',

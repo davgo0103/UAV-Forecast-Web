@@ -3,6 +3,7 @@ import { TileLayer, GeoJSON } from 'react-leaflet'
 import L from 'leaflet'
 import type { FeatureCollection, Feature } from 'geojson'
 import type { PathOptions } from 'leaflet'
+import WindVelocityLayer from './WindVelocityLayer'
 
 export interface LayerState {
   radar: boolean
@@ -119,12 +120,8 @@ export default function MapOverlayLayers({
           zIndex={201}
         />
       )}
-      {layers.wind && owmKey && (
-        <TileLayer
-          url={`https://tile.openweathermap.org/map/wind_new/{z}/{x}/{y}.png?appid=${owmKey}`}
-          opacity={0.65}
-          zIndex={202}
-        />
+      {layers.wind && (
+        <WindVelocityLayer />
       )}
       {layers.parks && parksData && (
         <GeoJSON

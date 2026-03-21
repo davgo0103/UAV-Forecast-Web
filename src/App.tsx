@@ -67,10 +67,13 @@ export default function App() {
     altitudeWindProfile,
     selectedDrone,
     selectedHourIndex,
+    aglHeight,
     isLoadingWeather,
     error,
     locationTimezone,
   } = useStore()
+
+  const LAPSE_RATE = 6.5 / 1000 // °C per meter
 
   const MAX_HOURS = 48
 
@@ -112,6 +115,12 @@ export default function App() {
     )
   }, [altitudeWindProfile, currentWeather, forecastFromNow, selectedHourIndex])
 
+  // Temperature at flight altitude using standard lapse rate (-6.5°C / 1000m)
+  const altitudeTemperature = useMemo<number | null>(() => {
+    if (!displayWeather || !effectiveAltitudeWind) return null
+    return Math.round((displayWeather.temperature - aglHeight * LAPSE_RATE) * 10) / 10
+  }, [displayWeather, effectiveAltitudeWind, aglHeight])
+
   // Compute per-hour statuses for the timeline bar
   // Each hour uses its own forecast Kp (3-hour resolution) to avoid all-red from current Kp
   const hourStatuses = useMemo<FlightStatus[]>(() => {
@@ -123,13 +132,15 @@ export default function App() {
         : altitudeWindProfile
           ? scaledAltitudeWind(currentWeather.windSpeed, slot.windSpeed, altitudeWindProfile.atFlightAltitude.windSpeed)
           : undefined
+      const slotTemp = weather.temperature - aglHeight * LAPSE_RATE
+      const weatherAtAlt = altWind != null ? { ...weather, temperature: slotTemp, feelsLike: slotTemp } : weather
       // Use per-slot Kp forecast so timeline colours reflect actual future conditions
       const slotKp = i === 0 || !kpData
         ? kpData
         : getEffectiveKp(kpData, slot.time, locationTimezone)
-      return computeFlightScore(weather, selectedDrone, slotKp, altWind).overall
+      return computeFlightScore(weatherAtAlt, selectedDrone, slotKp, altWind).overall
     })
-  }, [currentWeather, forecastFromNow, selectedDrone, kpData, altitudeWindProfile])
+  }, [currentWeather, forecastFromNow, selectedDrone, kpData, altitudeWindProfile, aglHeight])
 
   // Effective Kp for the selected time (forecast-aware)
   const effectiveKpData = useMemo(() => {
@@ -140,8 +151,12 @@ export default function App() {
     return getEffectiveKp(kpData, slot.time, locationTimezone)
   }, [kpData, selectedHourIndex, forecastFromNow, locationTimezone])
 
-  const flightScore = displayWeather
-    ? computeFlightScore(displayWeather, selectedDrone, effectiveKpData, effectiveAltitudeWind)
+  const weatherForScore = displayWeather && altitudeTemperature != null
+    ? { ...displayWeather, temperature: altitudeTemperature, feelsLike: altitudeTemperature }
+    : displayWeather
+
+  const flightScore = weatherForScore
+    ? computeFlightScore(weatherForScore, selectedDrone, effectiveKpData, effectiveAltitudeWind)
     : null
 
   const [chartCollapsed, setChartCollapsed] = useState(false)
@@ -231,6 +246,7 @@ export default function App() {
                 effectiveAltitudeWind={
                   selectedHourIndex > 0 ? effectiveAltitudeWind : undefined
                 }
+                altitudeTemperature={altitudeTemperature ?? undefined}
               />
             )}
 
