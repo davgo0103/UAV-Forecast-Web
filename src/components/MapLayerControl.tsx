@@ -28,7 +28,7 @@ const OVERLAY_OPTIONS: {
   { key: 'radar', label: '雷達回波', Icon: CloudRain },
   { key: 'clouds', label: '雲層', Icon: Cloud, needsOwm: true },
   { key: 'wind', label: '風場', Icon: Wind, needsOwm: true },
-  { key: 'airspace', label: '管制空域（紅/黃區）', Icon: PlaneTakeoff },
+  { key: 'airspace', label: '管制空域', Icon: PlaneTakeoff },
   { key: 'parks', label: '國家公園', Icon: Trees },
 ]
 

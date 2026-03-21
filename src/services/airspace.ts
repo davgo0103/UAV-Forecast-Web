@@ -29,8 +29,11 @@ const CAA_GIS = '/caa-gis/server/rest/services/Hosted'
 
 const PAGE_SIZE = 2000
 
-/** Paginated fetch for UAV_fs layers (共用 schema: 空域名稱/限制區/空域顏色/主管機關名稱) */
-async function fetchUavFsPages(url: string): Promise<Feature[]> {
+/** Paginated fetch for UAV_fs layers */
+async function fetchUavFsPages(
+  url: string,
+  outFields = '空域名稱,限制區,空域顏色,主管機關名稱',
+): Promise<Feature[]> {
   const features: Feature[] = []
   let offset = 0
   let retries = 0
@@ -38,7 +41,7 @@ async function fetchUavFsPages(url: string): Promise<Feature[]> {
   while (true) {
     const params = new URLSearchParams({
       where: '1=1',
-      outFields: '空域名稱,限制區,空域顏色,主管機關名稱',
+      outFields,
       f: 'geojson',
       returnGeometry: 'true',
       resultOffset: String(offset),
@@ -138,7 +141,9 @@ async function fetchCommercialPortPages(): Promise<Feature[]> {
             限制區: zone,
             空域顏色: zone,
             主管機關名稱: p?.['管理_及會商_機關'] ?? '交通部航港局',
-            條件: p?.說明 ?? p?.條件 ?? null,
+            聯絡方式: p?.['管理_及會商_機關聯絡方式'] ?? null,
+            空域說明: p?.說明 ?? null,
+            條件: p?.條件 ?? null,
             zone_type: '商港',
           },
         }
@@ -170,7 +175,10 @@ async function fetchCommercialPortPages(): Promise<Feature[]> {
  */
 export async function fetchAirspaceData(): Promise<FeatureCollection> {
   const results = await Promise.allSettled([
-    fetchUavFsPages(`${CAA_GIS}/UAV_fs/FeatureServer/3/query`),   // combined red+yellow
+    fetchUavFsPages(
+      `${CAA_GIS}/UAV_fs/FeatureServer/3/query`,
+      '空域名稱,限制區,空域顏色,主管機關名稱,會商機關名稱,空域說明,聯絡方式,罰則,條件',
+    ),   // combined red+yellow
     fetchNfzAirportPages(),                                         // airport no-fly
     fetchCommercialPortPages(),                                     // commercial ports
   ])

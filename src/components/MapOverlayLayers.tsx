@@ -1,5 +1,5 @@
-import L from 'leaflet'
 import { TileLayer, GeoJSON } from 'react-leaflet'
+import L from 'leaflet'
 import type { FeatureCollection, Feature } from 'geojson'
 import type { PathOptions } from 'leaflet'
 
@@ -11,17 +11,19 @@ export interface LayerState {
   parks: boolean
 }
 
+export type AirspaceInfo = Record<string, string | null> & { _type: 'airspace' | 'park' }
+
 interface Props {
   layers: LayerState
   radarUrl: string | null
   owmKey: string
   airspaceData: FeatureCollection | null
   parksData: FeatureCollection | null
+  onAirspaceClick: (info: AirspaceInfo) => void
 }
 
 function airspaceStyle(feature?: Feature): PathOptions {
   const p = feature?.properties as Record<string, string | null> | null
-  // 商港區域 → 灰色系
   if (p?.zone_type === '商港') {
     const cond = p?.條件 ?? ''
     if (cond.includes('禁止')) {
@@ -40,52 +42,48 @@ function parkStyle(): PathOptions {
   return { color: '#22c55e', fillColor: '#22c55e', fillOpacity: 0.08, weight: 1.5, dashArray: '4,4' }
 }
 
-function onEachAirspace(feature: Feature, layer: L.Layer) {
-  const p = feature.properties as Record<string, string | null> | null
-  if (!p) return
-
-  const name = p.空域名稱 ?? null
-  const authority = p.主管機關名稱 ?? null
-  let badge: string
-
+function airspaceBadgeHtml(p: Record<string, string | null>): string {
   if (p.zone_type === '商港') {
     const cond = p.條件 ?? ''
-    const condText = cond.includes('禁止') ? '禁止飛行區域' : cond.includes('管制') ? '管制飛行區域' : '限制飛行區域'
-    badge = `<span style="color:#9ca3af">🚢 商港 ${condText}</span>`
-  } else {
-    const zone = p.限制區 ?? ''
-    badge = zone.includes('紅')
-      ? `<span style="color:#ef4444">⛔ 紅區（禁止飛行）</span>`
-      : `<span style="color:#f97316">⚠️ 黃區（限制飛行）</span>`
+    const t = cond.includes('禁止') ? '禁止飛行區域' : cond.includes('管制') ? '管制飛行區域' : '限制飛行區域'
+    return `<span style="color:#9ca3af">🚢 商港 ${t}</span>`
   }
-
-  const lines = [
-    name      ? `<strong style="font-size:13px">${name}</strong>` : null,
-    badge,
-    authority ? `<span style="color:#94a3b8;font-size:11px">📋 ${authority}</span>` : null,
-    `<span style="color:#64748b;font-size:10px">資料來源：民航局</span>`,
-  ].filter(Boolean).join('<br/>')
-
-  ;(layer as L.Path).bindTooltip(lines, { sticky: true })
+  return (p.限制區 ?? '').includes('紅')
+    ? `<span style="color:#ef4444">⛔ 紅區（禁止飛行）</span>`
+    : `<span style="color:#f97316">⚠️ 黃區（限制飛行）</span>`
 }
 
-function onEachPark(feature: Feature, layer: L.Layer) {
-  const p = feature.properties as Record<string, string | null> | null
-  const name = p?.name_full ?? p?.名稱 ?? p?.NAME ?? '國家公園'
-  const regs = p?.相關規定 ?? null
+function makeOnEachAirspace(onAirspaceClick: (info: AirspaceInfo) => void) {
+  return (feature: Feature, layer: L.Layer) => {
+    const p = feature.properties as Record<string, string | null> | null
+    if (!p) return
+    const name = p.空域名稱 ?? '未知空域'
+    ;(layer as L.Path).bindTooltip(
+      `<strong style="font-size:12px">${name}</strong><br/>${airspaceBadgeHtml(p)}`,
+      { sticky: true },
+    )
+    layer.on('click', () => {
+      onAirspaceClick({ ...p, _type: 'airspace' } as AirspaceInfo)
+    })
+  }
+}
 
-  const lines = [
-    `<strong style="font-size:13px">${name}</strong>`,
-    `<span style="color:#22c55e">🌿 國家公園（禁止飛行）</span>`,
-    regs ? `<span style="color:#94a3b8;font-size:11px">${regs}</span>` : null,
-    `<span style="color:#64748b;font-size:10px">資料來源：民航局</span>`,
-  ].filter(Boolean).join('<br/>')
-
-  ;(layer as L.Path).bindTooltip(lines, { sticky: true })
+function makeOnEachPark(onAirspaceClick: (info: AirspaceInfo) => void) {
+  return (feature: Feature, layer: L.Layer) => {
+    const p = feature.properties as Record<string, string | null> | null
+    const name = p?.name_full ?? p?.名稱 ?? p?.NAME ?? '國家公園'
+    ;(layer as L.Path).bindTooltip(
+      `<strong style="font-size:12px">${name}</strong><br/><span style="color:#22c55e">🌿 國家公園（需申請）</span>`,
+      { sticky: true },
+    )
+    layer.on('click', () => {
+      onAirspaceClick({ ...(p ?? {}), name_full: name, _type: 'park' } as AirspaceInfo)
+    })
+  }
 }
 
 export default function MapOverlayLayers({
-  layers, radarUrl, owmKey, airspaceData, parksData,
+  layers, radarUrl, owmKey, airspaceData, parksData, onAirspaceClick,
 }: Props) {
   return (
     <>
@@ -116,7 +114,7 @@ export default function MapOverlayLayers({
           key={`parks-${parksData.features.length}`}
           data={parksData}
           style={parkStyle}
-          onEachFeature={onEachPark}
+          onEachFeature={makeOnEachPark(onAirspaceClick)}
         />
       )}
       {layers.airspace && airspaceData && (
@@ -124,7 +122,7 @@ export default function MapOverlayLayers({
           key={`airspace-${airspaceData.features.length}`}
           data={airspaceData}
           style={airspaceStyle}
-          onEachFeature={onEachAirspace}
+          onEachFeature={makeOnEachAirspace(onAirspaceClick)}
         />
       )}
     </>
