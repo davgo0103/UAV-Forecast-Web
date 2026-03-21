@@ -106,6 +106,8 @@ export default function MapView() {
   const [parksData, setParksData] = useState<FeatureCollection | null>(null)
   const [airspaceError, setAirspaceError] = useState(false)
   const [parksError, setParksError] = useState(false)
+  const [airspacePartial, setAirspacePartial] = useState(false)
+  const [parksPartial, setParksPartial] = useState(false)
   // null = not checked yet, true = valid, false = invalid/not activated
   const [owmValid, setOwmValid] = useState<null | boolean>(null)
 
@@ -124,8 +126,12 @@ export default function MapView() {
   useEffect(() => {
     if (!layers.airspace || airspaceData) return
     setAirspaceError(false)
+    setAirspacePartial(false)
     fetchAirspaceData()
-      .then(setAirspaceData)
+      .then((result) => {
+        setAirspaceData(result)
+        if (result.partial) setAirspacePartial(true)
+      })
       .catch(() => setAirspaceError(true))
   }, [layers.airspace, airspaceData])
 
@@ -133,18 +139,24 @@ export default function MapView() {
   useEffect(() => {
     if (!layers.parks || parksData) return
     setParksError(false)
+    setParksPartial(false)
     fetchNationalParksData()
-      .then(setParksData)
+      .then((result) => {
+        setParksData(result)
+        if (result.partial) setParksPartial(true)
+      })
       .catch(() => setParksError(true))
   }, [layers.parks, parksData])
 
   function retryAirspace() {
     setAirspaceError(false)
+    setAirspacePartial(false)
     setAirspaceData(null)
   }
 
   function retryParks() {
     setParksError(false)
+    setParksPartial(false)
     setParksData(null)
   }
 
@@ -171,6 +183,7 @@ export default function MapView() {
   const isLoading = (layers.airspace && !airspaceData && !airspaceError)
     || (layers.parks && !parksData && !parksError)
   const hasError = (layers.airspace && airspaceError) || (layers.parks && parksError)
+  const hasPartial = !hasError && ((layers.airspace && airspacePartial) || (layers.parks && parksPartial))
 
   return (
     <div className="w-full h-full rounded-xl overflow-hidden border border-dark-600 relative">
@@ -298,6 +311,23 @@ export default function MapView() {
                   )}
                 </div>
               </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Partial load warning */}
+      {hasPartial && (
+        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[1001] flex items-center gap-2 px-3 py-1.5 bg-dark-800/90 border border-accent-yellow/40 rounded-full shadow-lg backdrop-blur-sm">
+          <AlertTriangle className="w-3 h-3 text-accent-yellow flex-shrink-0" />
+          <span className="text-xs text-slate-300">空域資料可能不完整</span>
+          <div className="flex gap-1 ml-1">
+            {airspacePartial && (
+              <button onClick={retryAirspace} className="text-xs text-accent-blue hover:underline">重試空域</button>
+            )}
+            {airspacePartial && parksPartial && <span className="text-slate-600">·</span>}
+            {parksPartial && (
+              <button onClick={retryParks} className="text-xs text-accent-blue hover:underline">重試公園</button>
             )}
           </div>
         </div>

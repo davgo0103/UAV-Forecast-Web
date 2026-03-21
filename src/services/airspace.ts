@@ -33,7 +33,7 @@ const PAGE_SIZE = 2000
 async function fetchUavFsPages(
   url: string,
   outFields = '空域名稱,限制區,空域顏色,主管機關名稱',
-): Promise<Feature[]> {
+): Promise<{ features: Feature[]; partial: boolean }> {
   const features: Feature[] = []
   let offset = 0
   let retries = 0
@@ -49,26 +49,23 @@ async function fetchUavFsPages(
     })
     try {
       const res = await fetch(`${url}?${params}`)
-      if (!res.ok) break
+      if (!res.ok) return { features, partial: true }
       const data = (await res.json()) as FeatureCollection & { exceededTransferLimit?: boolean }
       features.push(...data.features)
       retries = 0
-      // GeoJSON 回應不一定包含 exceededTransferLimit，以實際回傳筆數判斷是否還有下一頁
       if (data.features.length < PAGE_SIZE && !data.exceededTransferLimit) break
       offset += data.features.length
     } catch {
-      if (++retries >= MAX_RETRIES) break
+      if (++retries >= MAX_RETRIES) return { features, partial: true }
     }
   }
-  return features
+  return { features, partial: false }
 }
 
 /**
  * Fetch airport core no-fly zones from NFZ layer (airspacetype=4).
- * Covers helicopter landing pads and civil airport core zones.
- * Normalises NFZ field names → AirspaceProperties schema.
  */
-async function fetchNfzAirportPages(): Promise<Feature[]> {
+async function fetchNfzAirportPages(): Promise<{ features: Feature[]; partial: boolean }> {
   const features: Feature[] = []
   let offset = 0
   let retries = 0
@@ -84,7 +81,7 @@ async function fetchNfzAirportPages(): Promise<Feature[]> {
     })
     try {
       const res = await fetch(`${CAA_GIS}/NFZ/FeatureServer/0/query?${params}`)
-      if (!res.ok) break
+      if (!res.ok) return { features, partial: true }
       const data = (await res.json()) as FeatureCollection & { exceededTransferLimit?: boolean }
       const normalised: Feature[] = data.features.map((f) => ({
         ...f,
@@ -100,19 +97,16 @@ async function fetchNfzAirportPages(): Promise<Feature[]> {
       if (data.features.length < PAGE_SIZE && !data.exceededTransferLimit) break
       offset += data.features.length
     } catch {
-      if (++retries >= MAX_RETRIES) break
+      if (++retries >= MAX_RETRIES) return { features, partial: true }
     }
   }
-  return features
+  return { features, partial: false }
 }
 
 /**
- * Fetch commercial port restriction zones (安平港、基隆港 etc.)
- * from Commercial_Port_fs/FeatureServer/4.
- * 條件='禁止' → 紅區, '管制' → 黃區.
- * Real field names: 名稱 (or name), 管理_及會商_機關, 條件.
+ * Fetch commercial port restriction zones.
  */
-async function fetchCommercialPortPages(): Promise<Feature[]> {
+async function fetchCommercialPortPages(): Promise<{ features: Feature[]; partial: boolean }> {
   const features: Feature[] = []
   let offset = 0
   let retries = 0
@@ -128,7 +122,7 @@ async function fetchCommercialPortPages(): Promise<Feature[]> {
     })
     try {
       const res = await fetch(`${CAA_GIS}/Commercial_Port_fs/FeatureServer/4/query?${params}`)
-      if (!res.ok) break
+      if (!res.ok) return { features, partial: true }
       const data = (await res.json()) as FeatureCollection & { exceededTransferLimit?: boolean }
       const normalised: Feature[] = data.features.map((f) => {
         const p = f.properties as Record<string, string | null> | null
@@ -153,39 +147,31 @@ async function fetchCommercialPortPages(): Promise<Feature[]> {
       if (data.features.length < PAGE_SIZE && !data.exceededTransferLimit) break
       offset += data.features.length
     } catch {
-      if (++retries >= MAX_RETRIES) break
+      if (++retries >= MAX_RETRIES) return { features, partial: true }
     }
   }
-  return features
+  return { features, partial: false }
 }
 
-/**
- * Fetch Taiwan UAV airspace restrictions from CAA GIS (民航局無人機管理平台).
- *
- * Layer mapping (UAV_fs FeatureServer):
- *   Layer 1 (UAV_fs_r)  : Red zones only  (~4620 records)
- *   Layer 2 (UAV_fs_y)  : Yellow zones only (~125 records, mostly empty now)
- *   Layer 3 (UAV_fs_ry) : Complete combined red+yellow (4745 records) ← use this
- *
- * Layer 3 is the authoritative dataset; each feature has 限制區=紅區|黃區.
- *
- * Additional sources:
- *   NFZ airspacetype=4  : Airport core no-fly zones (直昇機飛行場)
- *   Commercial_Port_fs/4: Commercial port restriction zones (安平港 etc.)
- */
-export async function fetchAirspaceData(): Promise<FeatureCollection> {
+export type AirspaceResult = FeatureCollection & { partial: boolean }
+
+export async function fetchAirspaceData(): Promise<AirspaceResult> {
   const results = await Promise.allSettled([
     fetchUavFsPages(
       `${CAA_GIS}/UAV_fs/FeatureServer/3/query`,
       '空域名稱,限制區,空域顏色,主管機關名稱,會商機關名稱,空域說明,聯絡方式,罰則,條件',
-    ),   // combined red+yellow
-    fetchNfzAirportPages(),                                         // airport no-fly
-    fetchCommercialPortPages(),                                     // commercial ports
+    ),
+    fetchNfzAirportPages(),
+    fetchCommercialPortPages(),
   ])
 
+  let partial = false
   const [combined, nfz, ports] = results.map((r) => {
-    if (r.status === 'fulfilled') return r.value
-    console.warn('[airspace] partial source failed:', r.reason)
+    if (r.status === 'fulfilled') {
+      if (r.value.partial) partial = true
+      return r.value.features
+    }
+    partial = true
     return [] as Feature[]
   })
 
@@ -193,17 +179,14 @@ export async function fetchAirspaceData(): Promise<FeatureCollection> {
   const yellow = combined.filter((f) => !(f.properties?.限制區 as string)?.includes('紅'))
 
   const all = [...yellow, ...red, ...nfz, ...ports]
-  // 面積大的先渲染（在下層），面積小的後渲染（在上層）
   all.sort((a, b) => featureArea(b) - featureArea(a))
 
-  return { type: 'FeatureCollection', features: all }
+  return { type: 'FeatureCollection', features: all, partial }
 }
 
-/**
- * Fetch Taiwan National Park boundaries.
- * Field: name_full (not 名稱 or NAME)
- */
-export async function fetchNationalParksData(): Promise<FeatureCollection> {
+export type ParksResult = FeatureCollection & { partial: boolean }
+
+export async function fetchNationalParksData(): Promise<ParksResult> {
   const features: Feature[] = []
   let offset = 0
   let retries = 0
@@ -211,7 +194,7 @@ export async function fetchNationalParksData(): Promise<FeatureCollection> {
   while (true) {
     const params = new URLSearchParams({
       where: '1=1',
-      outFields: '*',   // fetch all fields; name_full / 相關規定 extracted in component
+      outFields: '*',
       f: 'geojson',
       returnGeometry: 'true',
       resultOffset: String(offset),
@@ -221,15 +204,15 @@ export async function fetchNationalParksData(): Promise<FeatureCollection> {
       const res = await fetch(
         `${CAA_GIS}/National_Park_fs/FeatureServer/0/query?${params}`
       )
-      if (!res.ok) break
+      if (!res.ok) return { type: 'FeatureCollection', features, partial: true }
       const data = (await res.json()) as FeatureCollection & { exceededTransferLimit?: boolean }
       features.push(...data.features)
       retries = 0
       if (data.features.length < PAGE_SIZE && !data.exceededTransferLimit) break
       offset += data.features.length
     } catch {
-      if (++retries >= MAX_RETRIES) break
+      if (++retries >= MAX_RETRIES) return { type: 'FeatureCollection', features, partial: true }
     }
   }
-  return { type: 'FeatureCollection', features }
+  return { type: 'FeatureCollection', features, partial: false }
 }
