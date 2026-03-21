@@ -1,4 +1,27 @@
-import type { FeatureCollection, Feature } from 'geojson'
+import type { FeatureCollection, Feature, Polygon, MultiPolygon, Position } from 'geojson'
+
+/** Shoelace formula — returns unsigned area in coordinate units (for sorting only) */
+function ringArea(ring: Position[]): number {
+  let area = 0
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    area += (ring[j][0] + ring[i][0]) * (ring[j][1] - ring[i][1])
+  }
+  return Math.abs(area) / 2
+}
+
+function featureArea(f: Feature): number {
+  const geom = f.geometry
+  if (!geom) return 0
+  if (geom.type === 'Polygon') {
+    return (geom as Polygon).coordinates.reduce((s, ring) => s + ringArea(ring), 0)
+  }
+  if (geom.type === 'MultiPolygon') {
+    return (geom as MultiPolygon).coordinates.reduce(
+      (s, poly) => s + poly.reduce((ps, ring) => ps + ringArea(ring), 0), 0
+    )
+  }
+  return 0
+}
 
 // Requests route through Vite proxy (/caa-gis → https://dronegis.caa.gov.tw)
 // For Netlify: public/_redirects → "/caa-gis/* https://dronegis.caa.gov.tw/:splat 200"
@@ -161,11 +184,11 @@ export async function fetchAirspaceData(): Promise<FeatureCollection> {
   const red = combined.filter((f) => (f.properties?.限制區 as string)?.includes('紅'))
   const yellow = combined.filter((f) => !(f.properties?.限制區 as string)?.includes('紅'))
 
-  return {
-    type: 'FeatureCollection',
-    // Render order: yellow → red → NFZ → ports (商港灰色最上層，避免被覆蓋)
-    features: [...yellow, ...red, ...nfz, ...ports],
-  }
+  const all = [...yellow, ...red, ...nfz, ...ports]
+  // 面積大的先渲染（在下層），面積小的後渲染（在上層）
+  all.sort((a, b) => featureArea(b) - featureArea(a))
+
+  return { type: 'FeatureCollection', features: all }
 }
 
 /**
