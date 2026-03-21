@@ -4,10 +4,14 @@ import type { FeatureCollection, Feature } from 'geojson'
 // For Netlify: public/_redirects → "/caa-gis/* https://dronegis.caa.gov.tw/:splat 200"
 const CAA_GIS = '/caa-gis/server/rest/services/Hosted'
 
+const PAGE_SIZE = 2000
+
 /** Paginated fetch for UAV_fs layers (共用 schema: 空域名稱/限制區/空域顏色/主管機關名稱) */
 async function fetchUavFsPages(url: string): Promise<Feature[]> {
   const features: Feature[] = []
   let offset = 0
+  let retries = 0
+  const MAX_RETRIES = 3
   while (true) {
     const params = new URLSearchParams({
       where: '1=1',
@@ -15,17 +19,19 @@ async function fetchUavFsPages(url: string): Promise<Feature[]> {
       f: 'geojson',
       returnGeometry: 'true',
       resultOffset: String(offset),
-      resultRecordCount: '2000',
+      resultRecordCount: String(PAGE_SIZE),
     })
     try {
       const res = await fetch(`${url}?${params}`)
       if (!res.ok) break
       const data = (await res.json()) as FeatureCollection & { exceededTransferLimit?: boolean }
       features.push(...data.features)
-      if (!data.exceededTransferLimit) break
-      offset += 2000
+      retries = 0
+      // GeoJSON 回應不一定包含 exceededTransferLimit，以實際回傳筆數判斷是否還有下一頁
+      if (data.features.length < PAGE_SIZE && !data.exceededTransferLimit) break
+      offset += data.features.length
     } catch {
-      break
+      if (++retries >= MAX_RETRIES) break
     }
   }
   return features
@@ -33,12 +39,14 @@ async function fetchUavFsPages(url: string): Promise<Feature[]> {
 
 /**
  * Fetch airport core no-fly zones from NFZ layer (airspacetype=4).
- * Covers all 17 civil airports: TPE, TSA, KHH, RMQ, TNN, HUN, TTT, etc.
+ * Covers helicopter landing pads and civil airport core zones.
  * Normalises NFZ field names → AirspaceProperties schema.
  */
 async function fetchNfzAirportPages(): Promise<Feature[]> {
   const features: Feature[] = []
   let offset = 0
+  let retries = 0
+  const MAX_RETRIES = 3
   while (true) {
     const params = new URLSearchParams({
       where: 'airspacetype=4',
@@ -62,10 +70,11 @@ async function fetchNfzAirportPages(): Promise<Feature[]> {
         },
       }))
       features.push(...normalised)
-      if (!data.exceededTransferLimit) break
-      offset += 2000
+      retries = 0
+      if (data.features.length < PAGE_SIZE && !data.exceededTransferLimit) break
+      offset += data.features.length
     } catch {
-      break
+      if (++retries >= MAX_RETRIES) break
     }
   }
   return features
@@ -79,6 +88,8 @@ async function fetchNfzAirportPages(): Promise<Feature[]> {
 async function fetchCommercialPortPages(): Promise<Feature[]> {
   const features: Feature[] = []
   let offset = 0
+  let retries = 0
+  const MAX_RETRIES = 3
   while (true) {
     const params = new URLSearchParams({
       where: '1=1',
@@ -103,10 +114,11 @@ async function fetchCommercialPortPages(): Promise<Feature[]> {
         },
       }))
       features.push(...normalised)
-      if (!data.exceededTransferLimit) break
-      offset += 2000
+      retries = 0
+      if (data.features.length < PAGE_SIZE && !data.exceededTransferLimit) break
+      offset += data.features.length
     } catch {
-      break
+      if (++retries >= MAX_RETRIES) break
     }
   }
   return features
@@ -116,27 +128,31 @@ async function fetchCommercialPortPages(): Promise<Feature[]> {
  * Fetch Taiwan UAV airspace restrictions from CAA GIS (民航局無人機管理平台).
  *
  * Layer mapping (UAV_fs FeatureServer):
- *   Layer 1 (UAV_fs_r)  : Red zones  (禁止區, ~4620 records)
- *   Layer 2 (UAV_fs_y)  : Yellow zones (限制區, ~5800 records)
- *   Layer 3 (UAV_fs_ry) : Combined red+yellow — NOT fetched separately
+ *   Layer 1 (UAV_fs_r)  : Red zones only  (~4620 records)
+ *   Layer 2 (UAV_fs_y)  : Yellow zones only (~125 records, mostly empty now)
+ *   Layer 3 (UAV_fs_ry) : Complete combined red+yellow (4745 records) ← use this
+ *
+ * Layer 3 is the authoritative dataset; each feature has 限制區=紅區|黃區.
  *
  * Additional sources:
- *   NFZ airspacetype=4  : Airport core no-fly zones (17 civil airports)
+ *   NFZ airspacetype=4  : Airport core no-fly zones (直昇機飛行場)
  *   Commercial_Port_fs/4: Commercial port restriction zones (安平港 etc.)
  */
 export async function fetchAirspaceData(): Promise<FeatureCollection> {
   const results = await Promise.allSettled([
-    fetchUavFsPages(`${CAA_GIS}/UAV_fs/FeatureServer/1/query`),   // red zones
-    fetchUavFsPages(`${CAA_GIS}/UAV_fs/FeatureServer/2/query`),   // yellow zones
+    fetchUavFsPages(`${CAA_GIS}/UAV_fs/FeatureServer/3/query`),   // combined red+yellow
     fetchNfzAirportPages(),                                         // airport no-fly
     fetchCommercialPortPages(),                                     // commercial ports
   ])
 
-  const [red, yellow, nfz, ports] = results.map((r) => {
+  const [combined, nfz, ports] = results.map((r) => {
     if (r.status === 'fulfilled') return r.value
     console.warn('[airspace] partial source failed:', r.reason)
     return [] as Feature[]
   })
+
+  const red = combined.filter((f) => (f.properties?.限制區 as string)?.includes('紅'))
+  const yellow = combined.filter((f) => !(f.properties?.限制區 as string)?.includes('紅'))
 
   return {
     type: 'FeatureCollection',
@@ -152,6 +168,8 @@ export async function fetchAirspaceData(): Promise<FeatureCollection> {
 export async function fetchNationalParksData(): Promise<FeatureCollection> {
   const features: Feature[] = []
   let offset = 0
+  let retries = 0
+  const MAX_RETRIES = 3
   while (true) {
     const params = new URLSearchParams({
       where: '1=1',
@@ -168,10 +186,11 @@ export async function fetchNationalParksData(): Promise<FeatureCollection> {
       if (!res.ok) break
       const data = (await res.json()) as FeatureCollection & { exceededTransferLimit?: boolean }
       features.push(...data.features)
-      if (!data.exceededTransferLimit) break
-      offset += 2000
+      retries = 0
+      if (data.features.length < PAGE_SIZE && !data.exceededTransferLimit) break
+      offset += data.features.length
     } catch {
-      break
+      if (++retries >= MAX_RETRIES) break
     }
   }
   return { type: 'FeatureCollection', features }
