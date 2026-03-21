@@ -44,42 +44,51 @@ export function getEffectiveKp(kpData: KpData, targetTimeLocal: string, tz = 'As
     }
   }
 
+  // Only show forecast entries at or after the selected time
+  const futureForecast = kpData.forecast.filter(
+    entry => dayjs.utc(entry.time).diff(targetUtc, 'minute') >= -90
+  )
+
   return {
     ...kpData,
     current: closestKp,
     status: kpToStatus(closestKp),
     gpsImpact: kpToGpsImpact(closestKp),
+    forecast: futureForecast,
   }
 }
 
 export async function fetchKpIndex(): Promise<KpData> {
-  const [currentRes] = await Promise.allSettled([
-    axios.get(`${NOAA_BASE}/json/planetary_k_index_1m.json`),
-  ])
-
+  // Use official 3-hourly Kp product (observed + predicted in one file)
   let currentKp = 0
-
-  if (currentRes.status === 'fulfilled') {
-    const data = currentRes.value.data
-    if (Array.isArray(data) && data.length > 0) {
-      const latest = data[data.length - 1]
-      currentKp = parseFloat(latest.kp_index ?? latest.kp ?? 0)
-    }
-  }
-
-  // 3-day Kp forecast from NOAA
   let forecast: { time: string; kp: number }[] = []
+
   try {
-    const fRes = await axios.get(`${NOAA_BASE}/products/noaa-planetary-k-index-forecast.json`)
-    const fData = fRes.data
-    if (Array.isArray(fData)) {
-      forecast = fData.slice(1, 13).map((row: string[]) => ({
-        time: row[0],
-        kp: parseFloat(row[1] ?? '0'),
-      }))
+    // This file contains both observed (past) and predicted (future) 3-hourly Kp values
+    const res = await axios.get(`${NOAA_BASE}/products/noaa-planetary-k-index-forecast.json`)
+    const data: string[][] = res.data
+    if (Array.isArray(data) && data.length > 1) {
+      const rows = data.slice(1) // skip header row
+      const nowUtc = dayjs.utc()
+
+      // Find the entry (observed or predicted) whose 3-hour window contains "now".
+      // observed entries can lag >3 hours behind, so we pick the closest one regardless of status.
+      let minDiff = Infinity
+      for (const row of rows) {
+        const diff = Math.abs(dayjs.utc(row[0]).diff(nowUtc, 'minute'))
+        if (diff < minDiff) {
+          minDiff = diff
+          currentKp = parseFloat(row[1] ?? '0')
+        }
+      }
+
+      // Forecast: all entries starting from ~now (include the current 3-hour block too)
+      forecast = rows
+        .filter(row => dayjs.utc(row[0]).diff(nowUtc, 'minute') >= -90)
+        .map(row => ({ time: row[0], kp: parseFloat(row[1] ?? '0') }))
     }
   } catch {
-    // fallback: empty forecast
+    // fallback: keep defaults
   }
 
   return {
