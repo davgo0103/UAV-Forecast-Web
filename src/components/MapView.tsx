@@ -4,7 +4,7 @@ import { LatLng } from 'leaflet'
 import type { FeatureCollection } from 'geojson'
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
-import { X, Loader2 } from 'lucide-react'
+import { X, Loader2, RefreshCw, AlertTriangle } from 'lucide-react'
 import { useStore } from '../store/useStore'
 import { reverseGeocode } from '../services/geocoding'
 import { fetchAirspaceData, fetchNationalParksData } from '../services/airspace'
@@ -104,6 +104,8 @@ export default function MapView() {
   const [radarUrl, setRadarUrl] = useState<string | null>(null)
   const [airspaceData, setAirspaceData] = useState<FeatureCollection | null>(null)
   const [parksData, setParksData] = useState<FeatureCollection | null>(null)
+  const [airspaceError, setAirspaceError] = useState(false)
+  const [parksError, setParksError] = useState(false)
   // null = not checked yet, true = valid, false = invalid/not activated
   const [owmValid, setOwmValid] = useState<null | boolean>(null)
 
@@ -118,17 +120,33 @@ export default function MapView() {
     validateOwmKey(owmKey).then(setOwmValid)
   }, [owmKey])
 
-  // Fetch CAA airspace data when layer is enabled (only once)
+  // Fetch CAA airspace data when layer is enabled (only once, retry on error)
   useEffect(() => {
     if (!layers.airspace || airspaceData) return
-    fetchAirspaceData().then(setAirspaceData).catch(console.error)
+    setAirspaceError(false)
+    fetchAirspaceData()
+      .then(setAirspaceData)
+      .catch(() => setAirspaceError(true))
   }, [layers.airspace, airspaceData])
 
-  // Fetch national parks data when layer is enabled (only once)
+  // Fetch national parks data when layer is enabled (only once, retry on error)
   useEffect(() => {
     if (!layers.parks || parksData) return
-    fetchNationalParksData().then(setParksData).catch(console.error)
+    setParksError(false)
+    fetchNationalParksData()
+      .then(setParksData)
+      .catch(() => setParksError(true))
   }, [layers.parks, parksData])
+
+  function retryAirspace() {
+    setAirspaceError(false)
+    setAirspaceData(null)
+  }
+
+  function retryParks() {
+    setParksError(false)
+    setParksData(null)
+  }
 
   // Fetch latest RainViewer radar tile URL when radar layer is enabled
   useEffect(() => {
@@ -149,6 +167,10 @@ export default function MapView() {
   const toggleLayer = (key: keyof LayerState) => {
     setLayers((prev) => ({ ...prev, [key]: !prev[key] }))
   }
+
+  const isLoading = (layers.airspace && !airspaceData && !airspaceError)
+    || (layers.parks && !parksData && !parksError)
+  const hasError = (layers.airspace && airspaceError) || (layers.parks && parksError)
 
   return (
     <div className="w-full h-full rounded-xl overflow-hidden border border-dark-600 relative">
@@ -236,15 +258,47 @@ export default function MapView() {
         )
       })()}
 
-      {/* Airspace loading indicator */}
-      {((layers.airspace && !airspaceData) || (layers.parks && !parksData)) && (
+      {/* Airspace loading / error indicator */}
+      {(isLoading || hasError) && (
         <div className="absolute inset-0 z-[1001] flex items-center justify-center pointer-events-none">
-          <div className="flex flex-col items-center gap-3 px-6 py-5 bg-dark-800/90 border border-dark-600 rounded-2xl shadow-2xl backdrop-blur-sm">
-            <Loader2 className="w-8 h-8 animate-spin text-accent-blue" />
-            <div className="text-center">
-              <div className="text-sm font-medium text-white">空域資料載入中</div>
-              <div className="text-xs text-slate-500 mt-0.5">請稍候...</div>
-            </div>
+          <div className="flex flex-col items-center gap-3 px-6 py-5 bg-dark-800/90 border border-dark-600 rounded-2xl shadow-2xl backdrop-blur-sm pointer-events-auto">
+            {isLoading ? (
+              <>
+                <Loader2 className="w-8 h-8 animate-spin text-accent-blue" />
+                <div className="text-center">
+                  <div className="text-sm font-medium text-white">空域資料載入中</div>
+                  <div className="text-xs text-slate-500 mt-0.5">請稍候...</div>
+                </div>
+              </>
+            ) : (
+              <>
+                <AlertTriangle className="w-8 h-8 text-accent-yellow" />
+                <div className="text-center">
+                  <div className="text-sm font-medium text-white">空域資料載入失敗</div>
+                  <div className="text-xs text-slate-500 mt-0.5">網路可能不穩定</div>
+                </div>
+                <div className="flex gap-2">
+                  {airspaceError && (
+                    <button
+                      onClick={retryAirspace}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-dark-600 hover:bg-dark-500 text-xs text-slate-300 transition-colors"
+                    >
+                      <RefreshCw className="w-3 h-3" />
+                      重試管制空域
+                    </button>
+                  )}
+                  {parksError && (
+                    <button
+                      onClick={retryParks}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-dark-600 hover:bg-dark-500 text-xs text-slate-300 transition-colors"
+                    >
+                      <RefreshCw className="w-3 h-3" />
+                      重試國家公園
+                    </button>
+                  )}
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
