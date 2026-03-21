@@ -1,0 +1,9 @@
+RewriteEngine On
+
+# Proxy /caa-gis/* → https://dronegis.caa.gov.tw/*
+RewriteRule ^caa-gis/(.*)$ https://dronegis.caa.gov.tw/$1 [P,L]
+
+# SPA fallback — serve index.html for all non-file routes
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^ index.html [L]
