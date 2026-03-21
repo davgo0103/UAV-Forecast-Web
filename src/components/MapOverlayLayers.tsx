@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { TileLayer, GeoJSON } from 'react-leaflet'
 import L from 'leaflet'
 import type { FeatureCollection, Feature } from 'geojson'
@@ -68,7 +69,10 @@ function makeOnEachAirspace(onAirspaceClick: (info: AirspaceInfo) => void) {
   }
 }
 
-function makeOnEachPark(onAirspaceClick: (info: AirspaceInfo) => void) {
+function makeOnEachPark(
+  onAirspaceClick: (info: AirspaceInfo) => void,
+  parkRegsMap: Map<string, string>,
+) {
   return (feature: Feature, layer: L.Layer) => {
     const p = feature.properties as Record<string, string | null> | null
     const name = p?.name_full ?? p?.名稱 ?? p?.NAME ?? '國家公園'
@@ -77,7 +81,8 @@ function makeOnEachPark(onAirspaceClick: (info: AirspaceInfo) => void) {
       { sticky: true },
     )
     layer.on('click', () => {
-      onAirspaceClick({ ...(p ?? {}), name_full: name, _type: 'park' } as AirspaceInfo)
+      const regs = parkRegsMap.get(name) ?? p?.['相關規'] ?? null
+      onAirspaceClick({ ...(p ?? {}), name_full: name, 相關規定: regs, _type: 'park' } as AirspaceInfo)
     })
   }
 }
@@ -85,6 +90,18 @@ function makeOnEachPark(onAirspaceClick: (info: AirspaceInfo) => void) {
 export default function MapOverlayLayers({
   layers, radarUrl, owmKey, airspaceData, parksData, onAirspaceClick,
 }: Props) {
+  const parkRegsMap = useMemo(() => {
+    const map = new Map<string, string>()
+    if (!parksData) return map
+    for (const f of parksData.features) {
+      const p = f.properties as Record<string, string | null> | null
+      const name = p?.name_full ?? p?.名稱 ?? p?.NAME
+      const regs = p?.['相關規']
+      if (name && regs) map.set(name, regs)
+    }
+    return map
+  }, [parksData])
+
   return (
     <>
       {layers.radar && radarUrl && (
@@ -114,7 +131,7 @@ export default function MapOverlayLayers({
           key={`parks-${parksData.features.length}`}
           data={parksData}
           style={parkStyle}
-          onEachFeature={makeOnEachPark(onAirspaceClick)}
+          onEachFeature={makeOnEachPark(onAirspaceClick, parkRegsMap)}
         />
       )}
       {layers.airspace && airspaceData && (
