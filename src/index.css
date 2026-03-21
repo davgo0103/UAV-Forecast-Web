@@ -65,6 +65,11 @@ body {
   background: #3b82f6;
 }
 
+/* 移除點擊空域時的瀏覽器 focus 矩形外框 */
+.leaflet-interactive:focus {
+  outline: none;
+}
+
 /* Leaflet tooltip dark theme */
 .leaflet-tooltip {
   background-color: #1e2a3a !important;

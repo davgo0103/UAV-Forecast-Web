@@ -1,6 +1,6 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import dayjs from 'dayjs'
-import { Loader2, MapPin, AlertCircle, RefreshCw } from 'lucide-react'
+import { Loader2, MapPin, AlertCircle, RefreshCw, ChevronDown, BarChart2 } from 'lucide-react'
 import Header from './components/Header'
 import SearchBar from './components/SearchBar'
 import MapView from './components/MapView'
@@ -144,6 +144,8 @@ export default function App() {
     ? computeFlightScore(displayWeather, selectedDrone, effectiveKpData, effectiveAltitudeWind)
     : null
 
+  const [chartCollapsed, setChartCollapsed] = useState(false)
+
   if (isMobile) {
     return (
       <MobileLayout
@@ -244,12 +246,30 @@ export default function App() {
 
           {/* Forecast chart */}
           {forecastFromNow.length > 0 && (
-            <div className="p-4 pt-0 h-72 flex-shrink-0">
-              <ForecastChart
-                forecast={forecastFromNow}
-                drone={selectedDrone}
-                selectedHourIndex={selectedHourIndex}
-              />
+            <div className="flex-shrink-0 border-t border-dark-600">
+              {/* Handle bar */}
+              <button
+                onClick={() => setChartCollapsed((v) => !v)}
+                className="w-full flex items-center gap-3 px-6 py-1.5 bg-dark-800 hover:bg-dark-700 transition-colors group select-none cursor-pointer"
+              >
+                <div className="flex-1 h-px bg-dark-600 group-hover:bg-dark-500 transition-colors" />
+                <div className="flex items-center gap-1.5 text-slate-500 group-hover:text-slate-300 transition-colors">
+                  <BarChart2 className="w-3 h-3" />
+                  <span className="text-xs font-medium tracking-wide">24 小時預報</span>
+                  <ChevronDown className={`w-3 h-3 transition-transform duration-300 ${chartCollapsed ? '-rotate-180' : 'rotate-0'}`} />
+                </div>
+                <div className="flex-1 h-px bg-dark-600 group-hover:bg-dark-500 transition-colors" />
+              </button>
+              {/* Chart body */}
+              <div className={`overflow-hidden transition-all duration-300 ease-in-out ${chartCollapsed ? 'h-0' : 'h-64'}`}>
+                <div className="px-4 pb-4 h-64">
+                  <ForecastChart
+                    forecast={forecastFromNow}
+                    drone={selectedDrone}
+                    selectedHourIndex={selectedHourIndex}
+                  />
+                </div>
+              </div>
             </div>
           )}
 

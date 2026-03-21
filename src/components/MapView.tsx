@@ -81,8 +81,8 @@ export default function MapView() {
     radar: false,
     clouds: false,
     wind: false,
-    airspace: false,
-    parks: false,
+    airspace: true,
+    parks: true,
   })
   const [radarUrl, setRadarUrl] = useState<string | null>(null)
   const [airspaceData, setAirspaceData] = useState<FeatureCollection | null>(null)
