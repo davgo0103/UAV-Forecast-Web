@@ -20,7 +20,16 @@ interface Props {
 }
 
 function airspaceStyle(feature?: Feature): PathOptions {
-  const zone = (feature?.properties?.限制區 ?? '') as string
+  const p = feature?.properties as Record<string, string | null> | null
+  // 商港區域 → 灰色系
+  if (p?.zone_type === '商港') {
+    const cond = p?.條件 ?? ''
+    if (cond.includes('禁止')) {
+      return { color: '#6b7280', fillColor: '#6b7280', fillOpacity: 0.3, weight: 2 }
+    }
+    return { color: '#9ca3af', fillColor: '#9ca3af', fillOpacity: 0.15, weight: 1.5, dashArray: '5,4' }
+  }
+  const zone = (p?.限制區 ?? '') as string
   if (zone.includes('紅')) {
     return { color: '#ef4444', fillColor: '#ef4444', fillOpacity: 0.2, weight: 2 }
   }
@@ -35,12 +44,20 @@ function onEachAirspace(feature: Feature, layer: L.Layer) {
   const p = feature.properties as Record<string, string | null> | null
   if (!p) return
 
-  const zone = p.限制區 ?? ''
   const name = p.空域名稱 ?? null
   const authority = p.主管機關名稱 ?? null
-  const badge = zone.includes('紅')
-    ? `<span style="color:#ef4444">⛔ 紅區（禁止飛行）</span>`
-    : `<span style="color:#f97316">⚠️ 黃區（限制飛行）</span>`
+  let badge: string
+
+  if (p.zone_type === '商港') {
+    const cond = p.條件 ?? ''
+    const condText = cond.includes('禁止') ? '禁止飛行區域' : cond.includes('管制') ? '管制飛行區域' : '限制飛行區域'
+    badge = `<span style="color:#9ca3af">🚢 商港 ${condText}</span>`
+  } else {
+    const zone = p.限制區 ?? ''
+    badge = zone.includes('紅')
+      ? `<span style="color:#ef4444">⛔ 紅區（禁止飛行）</span>`
+      : `<span style="color:#f97316">⚠️ 黃區（限制飛行）</span>`
+  }
 
   const lines = [
     name      ? `<strong style="font-size:13px">${name}</strong>` : null,

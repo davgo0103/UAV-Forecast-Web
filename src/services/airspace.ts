@@ -83,7 +83,8 @@ async function fetchNfzAirportPages(): Promise<Feature[]> {
 /**
  * Fetch commercial port restriction zones (安平港、基隆港 etc.)
  * from Commercial_Port_fs/FeatureServer/4.
- * Normalises to AirspaceProperties schema as yellow zones.
+ * 條件='禁止' → 紅區, '管制' → 黃區.
+ * Real field names: 名稱 (or name), 管理_及會商_機關, 條件.
  */
 async function fetchCommercialPortPages(): Promise<Feature[]> {
   const features: Feature[] = []
@@ -93,7 +94,7 @@ async function fetchCommercialPortPages(): Promise<Feature[]> {
   while (true) {
     const params = new URLSearchParams({
       where: '1=1',
-      outFields: '名稱,管理機關,條件',
+      outFields: '*',
       f: 'geojson',
       returnGeometry: 'true',
       resultOffset: String(offset),
@@ -103,16 +104,22 @@ async function fetchCommercialPortPages(): Promise<Feature[]> {
       const res = await fetch(`${CAA_GIS}/Commercial_Port_fs/FeatureServer/4/query?${params}`)
       if (!res.ok) break
       const data = (await res.json()) as FeatureCollection & { exceededTransferLimit?: boolean }
-      const normalised: Feature[] = data.features.map((f) => ({
-        ...f,
-        properties: {
-          空域名稱: (f.properties?.名稱 as string | null) ?? '商港管制區',
-          限制區: '黃區',
-          空域顏色: '黃區',
-          主管機關名稱: (f.properties?.管理機關 as string | null) ?? '交通部航港局',
-          條件: f.properties?.條件 as string | null,
-        },
-      }))
+      const normalised: Feature[] = data.features.map((f) => {
+        const p = f.properties as Record<string, string | null> | null
+        const cond = p?.條件 ?? ''
+        const zone = cond === '禁止' ? '紅區' : '黃區'
+        return {
+          ...f,
+          properties: {
+            空域名稱: p?.名稱 ?? p?.name ?? '商港管制區',
+            限制區: zone,
+            空域顏色: zone,
+            主管機關名稱: p?.['管理_及會商_機關'] ?? '交通部航港局',
+            條件: p?.說明 ?? p?.條件 ?? null,
+            zone_type: '商港',
+          },
+        }
+      })
       features.push(...normalised)
       retries = 0
       if (data.features.length < PAGE_SIZE && !data.exceededTransferLimit) break
@@ -156,8 +163,8 @@ export async function fetchAirspaceData(): Promise<FeatureCollection> {
 
   return {
     type: 'FeatureCollection',
-    // Render order: yellow → ports → red → NFZ airports (topmost)
-    features: [...yellow, ...ports, ...red, ...nfz],
+    // Render order: yellow → red → NFZ → ports (商港灰色最上層，避免被覆蓋)
+    features: [...yellow, ...red, ...nfz, ...ports],
   }
 }
 
