@@ -4,7 +4,7 @@ import { LatLng } from 'leaflet'
 import type { FeatureCollection } from 'geojson'
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
-import { X } from 'lucide-react'
+import { X, Loader2 } from 'lucide-react'
 import { useStore } from '../store/useStore'
 import { reverseGeocode } from '../services/geocoding'
 import { fetchAirspaceData, fetchNationalParksData } from '../services/airspace'
@@ -233,6 +233,14 @@ export default function MapView() {
           </div>
         )
       })()}
+
+      {/* Airspace loading indicator */}
+      {((layers.airspace && !airspaceData) || (layers.parks && !parksData)) && (
+        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[1001] flex items-center gap-2 px-3 py-1.5 bg-dark-800/90 border border-dark-600 rounded-full text-xs text-slate-400 shadow-lg backdrop-blur-sm">
+          <Loader2 className="w-3 h-3 animate-spin text-accent-blue" />
+          空域資料載入中...
+        </div>
+      )}
 
       {/* Layer control — positioned above Leaflet (z-[1001]) */}
       <div className="absolute top-3 right-3 z-[1001]">
