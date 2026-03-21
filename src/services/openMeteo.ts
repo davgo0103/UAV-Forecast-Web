@@ -61,7 +61,7 @@ async function fetchMainWeather(lat: number, lon: number) {
         ].join(','),
         daily: 'sunrise,sunset',
         forecast_days: 3,
-        timezone: 'Asia/Taipei',
+        timezone: 'auto',
         wind_speed_unit: 'ms',
       },
     })
@@ -86,7 +86,7 @@ async function fetchUpperWindsSilent(lat: number, lon: number): Promise<UpperWin
         longitude: lon,
         hourly: pressureVars.join(','),
         forecast_days: 1,
-        timezone: 'Asia/Taipei',
+        timezone: 'auto',
         wind_speed_unit: 'ms',
       },
     })
@@ -106,6 +106,7 @@ export async function fetchAllWeatherData(lat: number, lon: number): Promise<{
   hourly: HourlyForecast[]
   upperWinds: UpperWindData[]
   elevation: number
+  timezone: string
 }> {
   // Main weather is required; upper winds are optional (run in parallel)
   const [d, upperWinds] = await Promise.all([
@@ -150,7 +151,7 @@ export async function fetchAllWeatherData(lat: number, lon: number): Promise<{
     weatherCode: d.hourly.weather_code[i],
   }))
 
-  return { current, hourly, upperWinds, elevation }
+  return { current, hourly, upperWinds, elevation, timezone: d.timezone ?? 'Asia/Taipei' }
 }
 
 export async function fetchElevation(lat: number, lon: number): Promise<number> {

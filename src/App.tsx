@@ -1,5 +1,10 @@
 import { useMemo, useState } from 'react'
 import dayjs from 'dayjs'
+import utc from 'dayjs/plugin/utc'
+import timezone from 'dayjs/plugin/timezone'
+
+dayjs.extend(utc)
+dayjs.extend(timezone)
 import { Loader2, MapPin, AlertCircle, RefreshCw, ChevronDown, BarChart2 } from 'lucide-react'
 import Header from './components/Header'
 import SearchBar from './components/SearchBar'
@@ -68,21 +73,20 @@ export default function App() {
     selectedHourIndex,
     isLoadingWeather,
     error,
+    locationTimezone,
   } = useStore()
 
   const MAX_HOURS = 48
 
   // Find the index of the current hour in hourlyForecast
-  // Open-Meteo returns data from 00:00 of today, so we skip past hours
+  // Compare using location's timezone so non-Taiwan locations are correct
   const nowForecastIndex = useMemo(() => {
     if (hourlyForecast.length === 0) return 0
-    const now = dayjs()
-    const idx = hourlyForecast.findIndex((f) => {
-      const t = dayjs(f.time)
-      return t.isSame(now, 'hour') || t.isAfter(now)
-    })
+    // "Now" expressed as a naive local time string in the location's timezone
+    const nowLocal = dayjs().tz(locationTimezone).format('YYYY-MM-DDTHH:mm')
+    const idx = hourlyForecast.findIndex((f) => f.time >= nowLocal)
     return idx === -1 ? 0 : idx
-  }, [hourlyForecast])
+  }, [hourlyForecast, locationTimezone])
 
   // Forecast starting from the current hour
   const forecastFromNow = useMemo(
@@ -126,7 +130,7 @@ export default function App() {
       // Use per-slot Kp forecast so timeline colours reflect actual future conditions
       const slotKp = i === 0 || !kpData
         ? kpData
-        : getEffectiveKp(kpData, slot.time)
+        : getEffectiveKp(kpData, slot.time, locationTimezone)
       return computeFlightScore(weather, selectedDrone, slotKp, altWind).overall
     })
   }, [currentWeather, forecastFromNow, selectedDrone, kpData, altitudeWindProfile])
@@ -137,8 +141,8 @@ export default function App() {
     if (selectedHourIndex === 0) return kpData
     const slot = forecastFromNow[selectedHourIndex]
     if (!slot || !kpData.forecast.length) return kpData
-    return getEffectiveKp(kpData, slot.time)
-  }, [kpData, selectedHourIndex, forecastFromNow])
+    return getEffectiveKp(kpData, slot.time, locationTimezone)
+  }, [kpData, selectedHourIndex, forecastFromNow, locationTimezone])
 
   const flightScore = displayWeather
     ? computeFlightScore(displayWeather, selectedDrone, effectiveKpData, effectiveAltitudeWind)
@@ -192,17 +196,18 @@ export default function App() {
 
           {/* Data panels */}
           <div className="flex-1 p-4 space-y-4">
-            {isLoadingWeather && (
-              <div className="flex items-center justify-center gap-3 py-8">
-                <Loader2 className="w-5 h-5 text-accent-blue animate-spin" />
-                <span className="text-sm text-slate-400">載入天氣資料中...</span>
-              </div>
-            )}
 
             {error && (
               <div className="flex items-start gap-3 bg-accent-red/10 border border-accent-red/30 rounded-xl p-4">
                 <AlertCircle className="w-4 h-4 text-accent-red flex-shrink-0 mt-0.5" />
                 <div className="text-sm text-accent-red">{error}</div>
+              </div>
+            )}
+
+            {isLoadingWeather && (
+              <div className="flex items-center justify-center gap-3 py-8">
+                <Loader2 className="w-5 h-5 text-accent-blue animate-spin" />
+                <span className="text-sm text-slate-400">載入天氣資料中...</span>
               </div>
             )}
 

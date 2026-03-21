@@ -31,6 +31,10 @@ interface AppState {
   setTerrainElevation: (e: number) => void
   clearWeather: () => void
 
+  // Timezone of the selected location (IANA, e.g. 'Asia/Taipei')
+  locationTimezone: string
+  setLocationTimezone: (tz: string) => void
+
   // Time selection (0 = now, 1-47 = future hours)
   selectedHourIndex: number
   setSelectedHourIndex: (i: number) => void
@@ -77,6 +81,9 @@ export const useStore = create<AppState>((set) => ({
     terrainElevation: 0,
     selectedHourIndex: 0,
   }),
+
+  locationTimezone: 'Asia/Taipei',
+  setLocationTimezone: (tz) => set({ locationTimezone: tz }),
 
   selectedHourIndex: 0,
   setSelectedHourIndex: (i) => set({ selectedHourIndex: i }),

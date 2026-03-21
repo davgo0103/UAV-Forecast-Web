@@ -236,9 +236,14 @@ export default function MapView() {
 
       {/* Airspace loading indicator */}
       {((layers.airspace && !airspaceData) || (layers.parks && !parksData)) && (
-        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[1001] flex items-center gap-2 px-3 py-1.5 bg-dark-800/90 border border-dark-600 rounded-full text-xs text-slate-400 shadow-lg backdrop-blur-sm">
-          <Loader2 className="w-3 h-3 animate-spin text-accent-blue" />
-          空域資料載入中...
+        <div className="absolute inset-0 z-[1001] flex items-center justify-center pointer-events-none">
+          <div className="flex flex-col items-center gap-3 px-6 py-5 bg-dark-800/90 border border-dark-600 rounded-2xl shadow-2xl backdrop-blur-sm">
+            <Loader2 className="w-8 h-8 animate-spin text-accent-blue" />
+            <div className="text-center">
+              <div className="text-sm font-medium text-white">空域資料載入中</div>
+              <div className="text-xs text-slate-500 mt-0.5">請稍候...</div>
+            </div>
+          </div>
         </div>
       )}
 

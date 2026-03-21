@@ -16,6 +16,7 @@ export function useWeatherData() {
     setIsLoadingKp,
     setError,
     clearWeather,
+    setLocationTimezone,
   } = useStore()
 
   useEffect(() => {
@@ -31,13 +32,14 @@ export function useWeatherData() {
 
       try {
         // Single combined request — weather + hourly + pressure winds + elevation
-        const { current, hourly, upperWinds, elevation } = await fetchAllWeatherData(
+        const { current, hourly, upperWinds, elevation, timezone } = await fetchAllWeatherData(
           location.lat,
           location.lon
         )
 
         const roundedElev = Math.round(elevation)
 
+        setLocationTimezone(timezone)
         setCurrentWeather(current)
         setHourlyForecast(hourly)
         setTerrainElevation(roundedElev)

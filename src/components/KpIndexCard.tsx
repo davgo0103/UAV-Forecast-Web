@@ -3,6 +3,7 @@ import dayjs from 'dayjs'
 import utc from 'dayjs/plugin/utc'
 import timezone from 'dayjs/plugin/timezone'
 import { KpData } from '../types'
+import { useStore } from '../store/useStore'
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
@@ -28,6 +29,7 @@ const GPS_MAP = {
 }
 
 export default function KpIndexCard({ kp, isForecast }: Props) {
+  const locationTimezone = useStore((s) => s.locationTimezone)
   const statusInfo = STATUS_MAP[kp.status]
   const gpsInfo = GPS_MAP[kp.gpsImpact]
 
@@ -93,7 +95,7 @@ export default function KpIndexCard({ kp, isForecast }: Props) {
           <div className="flex gap-1 overflow-x-auto pb-1">
             {kp.forecast.slice(0, 8).map((f, i) => {
               // NOAA times are UTC, convert to Taipei
-              const label = dayjs.utc(f.time).tz('Asia/Taipei').format('MM/DD HH:mm')
+              const label = dayjs.utc(f.time).tz(locationTimezone).format('MM/DD HH:mm')
               return (
                 <div key={i} className="flex-shrink-0 text-center group relative">
                   <div

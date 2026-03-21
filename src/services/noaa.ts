@@ -1,9 +1,11 @@
 import axios from 'axios'
 import dayjs from 'dayjs'
 import utc from 'dayjs/plugin/utc'
+import timezone from 'dayjs/plugin/timezone'
 import { KpData } from '../types'
 
 dayjs.extend(utc)
+dayjs.extend(timezone)
 
 const NOAA_BASE = 'https://services.swpc.noaa.gov'
 
@@ -23,15 +25,15 @@ function kpToGpsImpact(kp: number): KpData['gpsImpact'] {
 }
 
 /**
- * Given a target time string (Asia/Taipei, e.g. "2024-03-21T15:00")
+ * Given a target time string (location local time, e.g. "2024-03-21T15:00")
  * and a KpData object, return the effective Kp for that time.
  * NOAA forecast times are UTC; we convert before comparing.
  */
-export function getEffectiveKp(kpData: KpData, targetTimeLocal: string): KpData {
+export function getEffectiveKp(kpData: KpData, targetTimeLocal: string, tz = 'Asia/Taipei'): KpData {
   if (!kpData.forecast.length) return kpData
 
-  // targetTimeLocal is Asia/Taipei (UTC+8) — convert to UTC for comparison
-  const targetUtc = dayjs(targetTimeLocal).utcOffset(8).utc()
+  // targetTimeLocal is a naive local time string — interpret in the location's timezone, then convert to UTC
+  const targetUtc = dayjs.tz(targetTimeLocal, tz).utc()
 
   // Find the forecast entry whose 3-hour window contains the target time
   let closestKp = kpData.forecast[0].kp
