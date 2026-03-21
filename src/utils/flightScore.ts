@@ -59,6 +59,41 @@ function getPrecipitationStatus(
   return { status: 'good' }
 }
 
+/** Taiwan Civil Aviation Regulation: no flying after sunset / before sunrise without permit */
+function getNightStatus(weather: CurrentWeather): { status: FlightStatus; reason?: string } {
+  if (!weather.sunrise || !weather.sunset) return { status: 'good' }
+
+  // updatedAt is "2024-03-21T15:00" (Asia/Taipei), extract HH:mm
+  const timePart = weather.updatedAt.includes('T')
+    ? weather.updatedAt.split('T')[1]?.substring(0, 5)
+    : null
+  if (!timePart) return { status: 'good' }
+
+  const toMinutes = (hhmm: string) => {
+    const [h, m] = hhmm.split(':').map(Number)
+    return h * 60 + (m ?? 0)
+  }
+
+  const current = toMinutes(timePart)
+  const sunrise = toMinutes(weather.sunrise)
+  const sunset = toMinutes(weather.sunset)
+
+  if (current < sunrise || current >= sunset) {
+    return {
+      status: 'danger',
+      reason: `夜間不建議飛行（${weather.sunrise} 日出 / ${weather.sunset} 日落），請遵守當地民航規定`,
+    }
+  }
+  // Warn 30 minutes before sunset or after sunrise
+  if (current < sunrise + 30) {
+    return { status: 'caution', reason: `日出後 30 分鐘內光線不足，請謹慎評估` }
+  }
+  if (current >= sunset - 30) {
+    return { status: 'caution', reason: `距離日落不足 30 分鐘（${weather.sunset}），請注意飛行時間` }
+  }
+  return { status: 'good' }
+}
+
 function getKpStatus(kp: number): { status: FlightStatus; reason?: string } {
   if (kp >= 5) {
     return { status: 'danger', reason: `Kp=${kp} 地磁活動強烈，GPS 精度嚴重下降` }
@@ -100,6 +135,7 @@ export function computeFlightScore(
   const tempResult = getTempStatus(weather.temperature, drone)
   const rainResult = getPrecipitationStatus(weather.precipitation, drone)
   const kpResult = kp ? getKpStatus(kp.current) : { status: 'good' as FlightStatus }
+  const nightResult = getNightStatus(weather)
 
   const items: FlightScoreItem[] = [
     {
@@ -152,6 +188,13 @@ export function computeFlightScore(
       unit: '',
       status: kpResult.status,
       reason: kpResult.reason,
+    },
+    {
+      label: '飛行時段',
+      value: nightResult.status === 'good' ? '白天' : nightResult.status === 'caution' ? '日出/日落' : '夜間',
+      unit: '',
+      status: nightResult.status,
+      reason: nightResult.reason,
     },
   ]
 

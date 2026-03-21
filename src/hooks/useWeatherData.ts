@@ -15,6 +15,7 @@ export function useWeatherData() {
     setIsLoadingWeather,
     setIsLoadingKp,
     setError,
+    clearWeather,
   } = useStore()
 
   useEffect(() => {
@@ -24,6 +25,9 @@ export function useWeatherData() {
       if (!location) return
       setIsLoadingWeather(true)
       setError(null)
+
+      // Clear stale data immediately so old location's info isn't shown during load
+      clearWeather()
 
       try {
         // Single combined request — weather + hourly + pressure winds + elevation

@@ -35,9 +35,6 @@ export async function reverseGeocode(lat: number, lon: number): Promise<Location
       format: 'json',
       'accept-language': 'zh-TW,en',
     },
-    headers: {
-      'User-Agent': 'UAVForecastTW/1.0',
-    },
   })
 
   const d = response.data

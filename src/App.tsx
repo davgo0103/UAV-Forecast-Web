@@ -20,6 +20,7 @@ import { computeFlightScore } from './utils/flightScore'
 import { CurrentWeather, FlightStatus } from './types'
 import { WEATHER_CODE_MAP } from './data/drones'
 import { useMediaQuery } from './hooks/useMediaQuery'
+import { getEffectiveKp } from './services/noaa'
 
 /** Convert an HourlyForecast slot into a CurrentWeather-compatible shape for display */
 function forecastToCurrentWeather(
@@ -111,7 +112,8 @@ export default function App() {
     )
   }, [altitudeWindProfile, currentWeather, forecastFromNow, selectedHourIndex])
 
-  // Compute per-hour statuses for the timeline bar (based on forecastFromNow)
+  // Compute per-hour statuses for the timeline bar
+  // Each hour uses its own forecast Kp (3-hour resolution) to avoid all-red from current Kp
   const hourStatuses = useMemo<FlightStatus[]>(() => {
     if (!currentWeather) return []
     return forecastFromNow.map((slot, i) => {
@@ -121,12 +123,25 @@ export default function App() {
         : altitudeWindProfile
           ? scaledAltitudeWind(currentWeather.windSpeed, slot.windSpeed, altitudeWindProfile.atFlightAltitude.windSpeed)
           : undefined
-      return computeFlightScore(weather, selectedDrone, kpData, altWind).overall
+      // Use per-slot Kp forecast so timeline colours reflect actual future conditions
+      const slotKp = i === 0 || !kpData
+        ? kpData
+        : getEffectiveKp(kpData, slot.time)
+      return computeFlightScore(weather, selectedDrone, slotKp, altWind).overall
     })
   }, [currentWeather, forecastFromNow, selectedDrone, kpData, altitudeWindProfile])
 
+  // Effective Kp for the selected time (forecast-aware)
+  const effectiveKpData = useMemo(() => {
+    if (!kpData) return null
+    if (selectedHourIndex === 0) return kpData
+    const slot = forecastFromNow[selectedHourIndex]
+    if (!slot || !kpData.forecast.length) return kpData
+    return getEffectiveKp(kpData, slot.time)
+  }, [kpData, selectedHourIndex, forecastFromNow])
+
   const flightScore = displayWeather
-    ? computeFlightScore(displayWeather, selectedDrone, kpData, effectiveAltitudeWind)
+    ? computeFlightScore(displayWeather, selectedDrone, effectiveKpData, effectiveAltitudeWind)
     : null
 
   if (isMobile) {
@@ -143,7 +158,7 @@ export default function App() {
         effectiveAltitudeWind={effectiveAltitudeWind}
         isLoadingWeather={isLoadingWeather}
         error={error}
-        kpData={kpData}
+        kpData={effectiveKpData}
       />
     )
   }
@@ -216,7 +231,7 @@ export default function App() {
               />
             )}
 
-            {kpData && <KpIndexCard kp={kpData} />}
+            {effectiveKpData && <KpIndexCard kp={effectiveKpData} isForecast={selectedHourIndex > 0} />}
           </div>
         </div>
 

@@ -135,7 +135,7 @@ export default function MobileLayout({
           )}
 
           {/* Kp index */}
-          {kpData && <KpIndexCard kp={kpData} />}
+          {kpData && <KpIndexCard kp={kpData} isForecast={selectedHourIndex > 0} />}
 
           {/* Forecast chart */}
           {hourlyForecast.length > 0 && (

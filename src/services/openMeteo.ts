@@ -25,34 +25,10 @@ async function withRetry<T>(fn: () => Promise<T>, retries = 2, delayMs = 800): P
 }
 
 /**
- * Single combined API call: current weather + hourly forecast + daily sunrise/sunset
- * + pressure-level winds (from hourly, first slot = now)
+ * Main weather request: current + hourly + daily sunrise/sunset
+ * Kept lean — no pressure level vars to avoid 400 on unsupported regions
  */
-export async function fetchAllWeatherData(lat: number, lon: number): Promise<{
-  current: CurrentWeather
-  hourly: HourlyForecast[]
-  upperWinds: UpperWindData[]
-  elevation: number
-}> {
-  const pressureWindVars: string[] = []
-  for (const level of PRESSURE_LEVELS) {
-    pressureWindVars.push(`wind_speed_${level.hPa}hPa`)
-    pressureWindVars.push(`wind_direction_${level.hPa}hPa`)
-  }
-
-  const hourlyVars = [
-    'temperature_2m',
-    'wind_speed_10m',
-    'wind_direction_10m',
-    'wind_gusts_10m',
-    'precipitation',
-    'precipitation_probability',
-    'cloud_cover',
-    'visibility',
-    'weather_code',
-    ...pressureWindVars,
-  ]
-
+async function fetchMainWeather(lat: number, lon: number) {
   const response = await withRetry(() =>
     axios.get(`${BASE_URL}/forecast`, {
       timeout: 12000,
@@ -72,7 +48,17 @@ export async function fetchAllWeatherData(lat: number, lon: number): Promise<{
           'precipitation',
           'weather_code',
         ].join(','),
-        hourly: hourlyVars.join(','),
+        hourly: [
+          'temperature_2m',
+          'wind_speed_10m',
+          'wind_direction_10m',
+          'wind_gusts_10m',
+          'precipitation',
+          'precipitation_probability',
+          'cloud_cover',
+          'visibility',
+          'weather_code',
+        ].join(','),
         daily: 'sunrise,sunset',
         forecast_days: 3,
         timezone: 'Asia/Taipei',
@@ -80,11 +66,55 @@ export async function fetchAllWeatherData(lat: number, lon: number): Promise<{
       },
     })
   )
+  return response.data
+}
 
-  const d = response.data
+/**
+ * Optional pressure-level winds — fails silently if region unsupported
+ */
+async function fetchUpperWindsSilent(lat: number, lon: number): Promise<UpperWindData[]> {
+  try {
+    const pressureVars: string[] = []
+    for (const level of PRESSURE_LEVELS) {
+      pressureVars.push(`wind_speed_${level.hPa}hPa`)
+      pressureVars.push(`wind_direction_${level.hPa}hPa`)
+    }
+    const response = await axios.get(`${BASE_URL}/forecast`, {
+      timeout: 10000,
+      params: {
+        latitude: lat,
+        longitude: lon,
+        hourly: pressureVars.join(','),
+        forecast_days: 1,
+        timezone: 'Asia/Taipei',
+        wind_speed_unit: 'ms',
+      },
+    })
+    const h = response.data.hourly
+    return PRESSURE_LEVELS.map((level) => ({
+      altitude: level.altM,
+      windSpeed: h[`wind_speed_${level.hPa}hPa`]?.[0] ?? 0,
+      windDirection: h[`wind_direction_${level.hPa}hPa`]?.[0] ?? 0,
+    })).filter((w) => w.windSpeed > 0)
+  } catch {
+    return [] // non-fatal — fall back to surface wind only
+  }
+}
+
+export async function fetchAllWeatherData(lat: number, lon: number): Promise<{
+  current: CurrentWeather
+  hourly: HourlyForecast[]
+  upperWinds: UpperWindData[]
+  elevation: number
+}> {
+  // Main weather is required; upper winds are optional (run in parallel)
+  const [d, upperWinds] = await Promise.all([
+    fetchMainWeather(lat, lon),
+    fetchUpperWindsSilent(lat, lon),
+  ])
+
   const c = d.current
   const elevation: number = d.elevation ?? 0
-
   const sunrise: string = d.daily?.sunrise?.[0]?.split('T')[1] ?? ''
   const sunset: string = d.daily?.sunset?.[0]?.split('T')[1] ?? ''
 
@@ -119,13 +149,6 @@ export async function fetchAllWeatherData(lat: number, lon: number): Promise<{
     visibility: d.hourly.visibility?.[i] ?? 10000,
     weatherCode: d.hourly.weather_code[i],
   }))
-
-  // Extract upper winds from the first hourly slot (= nearest future hour)
-  const upperWinds: UpperWindData[] = PRESSURE_LEVELS.map((level) => ({
-    altitude: level.altM,
-    windSpeed: d.hourly[`wind_speed_${level.hPa}hPa`]?.[0] ?? 0,
-    windDirection: d.hourly[`wind_direction_${level.hPa}hPa`]?.[0] ?? 0,
-  })).filter((w) => w.windSpeed > 0) // drop levels with no data
 
   return { current, hourly, upperWinds, elevation }
 }

@@ -29,6 +29,7 @@ interface AppState {
   setKpData: (kp: KpData) => void
   setAltitudeWindProfile: (p: AltitudeWindProfile) => void
   setTerrainElevation: (e: number) => void
+  clearWeather: () => void
 
   // Time selection (0 = now, 1-47 = future hours)
   selectedHourIndex: number
@@ -69,6 +70,13 @@ export const useStore = create<AppState>((set) => ({
   setKpData: (kp) => set({ kpData: kp }),
   setAltitudeWindProfile: (p) => set({ altitudeWindProfile: p }),
   setTerrainElevation: (e) => set({ terrainElevation: e }),
+  clearWeather: () => set({
+    currentWeather: null,
+    hourlyForecast: [],
+    altitudeWindProfile: null,
+    terrainElevation: 0,
+    selectedHourIndex: 0,
+  }),
 
   selectedHourIndex: 0,
   setSelectedHourIndex: (i) => set({ selectedHourIndex: i }),

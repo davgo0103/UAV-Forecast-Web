@@ -1,8 +1,15 @@
-import { Zap } from 'lucide-react'
+import { Zap, Clock } from 'lucide-react'
+import dayjs from 'dayjs'
+import utc from 'dayjs/plugin/utc'
+import timezone from 'dayjs/plugin/timezone'
 import { KpData } from '../types'
+
+dayjs.extend(utc)
+dayjs.extend(timezone)
 
 interface Props {
   kp: KpData
+  isForecast?: boolean
 }
 
 const STATUS_MAP = {
@@ -20,7 +27,7 @@ const GPS_MAP = {
   severe: { label: '嚴重影響', color: 'text-accent-red' },
 }
 
-export default function KpIndexCard({ kp }: Props) {
+export default function KpIndexCard({ kp, isForecast }: Props) {
   const statusInfo = STATUS_MAP[kp.status]
   const gpsInfo = GPS_MAP[kp.gpsImpact]
 
@@ -33,6 +40,12 @@ export default function KpIndexCard({ kp }: Props) {
       <div className="flex items-center gap-2 mb-3">
         <Zap className="w-4 h-4 text-accent-yellow" />
         <span className="text-sm font-medium text-white">地磁活動 / Kp 指數</span>
+        {isForecast && (
+          <span className="ml-auto flex items-center gap-1 text-xs text-accent-cyan">
+            <Clock className="w-3 h-3" />
+            預報
+          </span>
+        )}
       </div>
 
       <div className="flex items-center gap-4 mb-3">
@@ -76,21 +89,33 @@ export default function KpIndexCard({ kp }: Props) {
       {/* Forecast */}
       {kp.forecast.length > 0 && (
         <div>
-          <div className="text-xs text-slate-400 mb-1.5">未來預報</div>
+          <div className="text-xs text-slate-400 mb-1.5">未來預報（每格 3 小時）</div>
           <div className="flex gap-1 overflow-x-auto pb-1">
-            {kp.forecast.slice(0, 8).map((f, i) => (
-              <div key={i} className="flex-shrink-0 text-center">
-                <div
-                  className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold mb-0.5 ${
-                    f.kp < 3 ? 'bg-accent-green/20 text-accent-green'
-                    : f.kp < 5 ? 'bg-accent-yellow/20 text-accent-yellow'
-                    : 'bg-accent-red/20 text-accent-red'
-                  }`}
-                >
-                  {f.kp.toFixed(0)}
+            {kp.forecast.slice(0, 8).map((f, i) => {
+              // NOAA times are UTC, convert to Taipei
+              const label = dayjs.utc(f.time).tz('Asia/Taipei').format('MM/DD HH:mm')
+              return (
+                <div key={i} className="flex-shrink-0 text-center group relative">
+                  <div
+                    className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold mb-0.5 cursor-default transition-opacity group-hover:opacity-80 ${
+                      f.kp < 3 ? 'bg-accent-green/20 text-accent-green'
+                      : f.kp < 5 ? 'bg-accent-yellow/20 text-accent-yellow'
+                      : 'bg-accent-red/20 text-accent-red'
+                    }`}
+                  >
+                    {f.kp.toFixed(0)}
+                  </div>
+                  {/* Tooltip */}
+                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block z-10 pointer-events-none">
+                    <div className="bg-dark-600 border border-dark-500 rounded-lg px-2 py-1.5 text-xs text-white whitespace-nowrap shadow-xl">
+                      <div className="font-mono">{label}</div>
+                      <div className="text-slate-400 mt-0.5">Kp = {f.kp.toFixed(1)}</div>
+                    </div>
+                    <div className="w-2 h-2 bg-dark-600 border-r border-b border-dark-500 rotate-45 mx-auto -mt-1" />
+                  </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       )}
