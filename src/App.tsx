@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import dayjs from 'dayjs'
 import { Loader2, MapPin, AlertCircle, RefreshCw, ChevronDown, BarChart2 } from 'lucide-react'
 import Header from './components/Header'
+import CreditCard from './components/CreditCard'
 import SearchBar from './components/SearchBar'
 import MapView from './components/MapView'
 import WeatherPanel from './components/WeatherPanel'
@@ -281,6 +282,11 @@ export default function App() {
             </div>
           )}
         </div>
+      </div>
+
+      {/* Credit */}
+      <div className="fixed bottom-3 right-4 z-[1002]">
+        <CreditCard />
       </div>
     </div>
   )

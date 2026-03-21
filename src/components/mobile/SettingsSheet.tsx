@@ -12,13 +12,13 @@ export default function SettingsSheet({ onClose }: Props) {
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 z-[9998] bg-black/50 backdrop-blur-sm"
+        className="fixed inset-0 z-[9998] bg-black/20"
         onClick={onClose}
       />
 
       {/* Sheet */}
       <div
-        className="fixed bottom-0 left-0 right-0 z-[9999] bg-dark-800/60 backdrop-blur-xl rounded-t-2xl border-t border-dark-600/60 flex flex-col"
+        className="fixed bottom-0 left-0 right-0 z-[9999] bg-dark-800/30 backdrop-blur-md rounded-t-2xl border-t border-white/10 flex flex-col"
         style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 16px)' }}
       >
         {/* Handle bar */}

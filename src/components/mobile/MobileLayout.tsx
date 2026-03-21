@@ -12,6 +12,7 @@ import SettingsSheet from './SettingsSheet'
 import { FlightScore, FlightStatus, CurrentWeather, AltitudeWindProfile } from '../../types'
 import { DroneSpec, HourlyForecast } from '../../types'
 import { useStore } from '../../store/useStore'
+import CreditCard from '../CreditCard'
 
 interface Props {
   location: ReturnType<typeof useStore.getState>['location']
@@ -147,6 +148,11 @@ export default function MobileLayout({
               />
             </div>
           )}
+
+          {/* Credit */}
+          <div className="flex justify-end pr-1">
+            <CreditCard />
+          </div>
 
           {/* Bottom padding for safe area */}
           <div style={{ height: 'max(env(safe-area-inset-bottom), 16px)' }} />

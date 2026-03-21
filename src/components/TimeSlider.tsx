@@ -1,3 +1,4 @@
+import { useRef } from 'react'
 import { Clock } from 'lucide-react'
 import dayjs from 'dayjs'
 import { useStore } from '../store/useStore'
@@ -23,6 +24,24 @@ const STATUS_GLOW: Record<FlightStatus, string> = {
 
 export default function TimeSlider({ maxHours, hourStatuses, forecastFromNow }: Props) {
   const { selectedHourIndex, setSelectedHourIndex } = useStore()
+  const trackRef = useRef<HTMLDivElement>(null)
+
+  function indexFromClientX(clientX: number): number {
+    const rect = trackRef.current?.getBoundingClientRect()
+    if (!rect) return selectedHourIndex
+    const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width))
+    return Math.round(ratio * (maxHours - 1))
+  }
+
+  function handleTouchStart(e: React.TouchEvent) {
+    e.preventDefault()
+    setSelectedHourIndex(indexFromClientX(e.touches[0].clientX))
+  }
+
+  function handleTouchMove(e: React.TouchEvent) {
+    e.preventDefault()
+    setSelectedHourIndex(indexFromClientX(e.touches[0].clientX))
+  }
 
   const selectedTime = forecastFromNow[selectedHourIndex]
   const isNow = selectedHourIndex === 0
@@ -56,27 +75,30 @@ export default function TimeSlider({ maxHours, hourStatuses, forecastFromNow }: 
       </div>
 
       {/* Timeline dots */}
-      <div className="relative mb-2">
-        <div className="flex gap-px h-4 items-center">
+      <div
+        ref={trackRef}
+        className="relative mb-2 py-3 -my-3 cursor-pointer"
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+      >
+        <div className="flex gap-px h-4 items-center pointer-events-none">
           {hourStatuses.slice(0, maxHours).map((status, i) => (
-            <button
+            <div
               key={i}
-              onClick={() => setSelectedHourIndex(i)}
-              title={forecastFromNow[i] ? dayjs(forecastFromNow[i].time).format('MM/DD HH:mm') : ''}
-              className={`flex-1 h-1.5 rounded-sm transition-all cursor-pointer hover:opacity-100
+              className={`flex-1 h-1.5 rounded-sm transition-all
                 ${STATUS_COLOR[status]}
                 ${i === selectedHourIndex ? 'opacity-100 h-3' : 'opacity-50'}`}
             />
           ))}
         </div>
-        {/* Slider thumb */}
+        {/* Desktop slider */}
         <input
           type="range"
           min={0}
           max={maxHours - 1}
           value={selectedHourIndex}
           onChange={(e) => setSelectedHourIndex(parseInt(e.target.value))}
-          className="absolute inset-0 w-full opacity-0 cursor-pointer"
+          className="absolute inset-0 w-full opacity-0 cursor-pointer touch-none"
           style={{ height: '100%' }}
         />
       </div>
