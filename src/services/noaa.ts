@@ -1,11 +1,6 @@
 import axios from 'axios'
 import dayjs from 'dayjs'
-import utc from 'dayjs/plugin/utc'
-import timezone from 'dayjs/plugin/timezone'
 import { KpData } from '../types'
-
-dayjs.extend(utc)
-dayjs.extend(timezone)
 
 const NOAA_BASE = 'https://services.swpc.noaa.gov'
 

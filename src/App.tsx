@@ -1,10 +1,5 @@
 import { useMemo, useState } from 'react'
 import dayjs from 'dayjs'
-import utc from 'dayjs/plugin/utc'
-import timezone from 'dayjs/plugin/timezone'
-
-dayjs.extend(utc)
-dayjs.extend(timezone)
 import { Loader2, MapPin, AlertCircle, RefreshCw, ChevronDown, BarChart2 } from 'lucide-react'
 import Header from './components/Header'
 import SearchBar from './components/SearchBar'

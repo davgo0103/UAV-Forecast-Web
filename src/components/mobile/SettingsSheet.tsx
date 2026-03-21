@@ -18,7 +18,7 @@ export default function SettingsSheet({ onClose }: Props) {
 
       {/* Sheet */}
       <div
-        className="fixed bottom-0 left-0 right-0 z-[9999] bg-dark-800 rounded-t-2xl border-t border-dark-600 flex flex-col"
+        className="fixed bottom-0 left-0 right-0 z-[9999] bg-dark-800/60 backdrop-blur-xl rounded-t-2xl border-t border-dark-600/60 flex flex-col"
         style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 16px)' }}
       >
         {/* Handle bar */}
