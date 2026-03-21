@@ -7,7 +7,7 @@ export default function Header() {
         <Wind className="w-5 h-5 text-accent-blue" />
       </div>
       <div>
-        <h1 className="text-lg font-bold text-white tracking-wide">UAV Forecast</h1>
+        <h1 className="text-lg font-bold text-white tracking-wide">UAV Forecast Taiwan</h1>
         <p className="text-xs text-slate-400">台灣無人機氣象預報</p>
       </div>
     </header>

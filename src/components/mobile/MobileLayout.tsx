@@ -55,7 +55,7 @@ export default function MobileLayout({
       <div className="flex items-center gap-3 px-4 py-3 bg-dark-800 border-b border-dark-600 flex-shrink-0">
         <div className="flex items-center gap-2 flex-1">
           <Wind className="w-4 h-4 text-accent-blue" />
-          <span className="font-bold text-white tracking-wide text-sm">UAV Forecast</span>
+          <span className="font-bold text-white tracking-wide text-sm">UAV Forecast Taiwan</span>
         </div>
         <button
           onClick={() => setSettingsOpen(true)}
