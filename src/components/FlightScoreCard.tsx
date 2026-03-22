@@ -27,6 +27,7 @@ function statusBg(status: FlightStatus) {
 }
 
 function statusLabel(status: FlightStatus, score: number) {
+  if (score < 40) return '飛了就炸'
   if (score < 70) return '禁飛'
   if (status === 'good') return '適合飛行'
   if (status === 'caution') return '謹慎飛行'

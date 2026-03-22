@@ -146,9 +146,9 @@ export default function App() {
       const slotKp = i === 0 || !kpData
         ? kpData
         : getEffectiveKp(kpData, slot.time, locationTimezone)
-      return computeFlightScore(weatherAtAlt, selectedDrone, slotKp, altWind).overall
+      return computeFlightScore(weatherAtAlt, selectedDrone, slotKp, altWind, terrainElevation + aglHeight).overall
     })
-  }, [currentWeather, forecastFromNow, selectedDrone, kpData, altitudeWindProfile, aglHeight])
+  }, [currentWeather, forecastFromNow, selectedDrone, kpData, altitudeWindProfile, aglHeight, terrainElevation])
 
   // Effective Kp for the selected time (forecast-aware)
   const effectiveKpData = useMemo(() => {

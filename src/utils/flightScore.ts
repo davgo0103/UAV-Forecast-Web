@@ -100,11 +100,14 @@ function getNightStatus(weather: CurrentWeather): { status: FlightStatus; reason
 }
 
 function getKpStatus(kp: number): { status: FlightStatus; reason?: string } {
-  if (kp >= 5) {
+  if (kp >= 6) {
     return { status: 'danger', reason: `Kp=${kp} 地磁活動強烈，GPS 精度嚴重下降` }
   }
+  if (kp >= 5) {
+    return { status: 'caution', reason: `Kp=${kp} 地磁活動強烈，GPS 精度下降，建議切換手動姿態飛行` }
+  }
   if (kp >= 3) {
-    return { status: 'caution', reason: `Kp=${kp} 地磁活動偏高，GPS 可能受影響` }
+    return { status: 'caution', reason: `Kp=${kp} 地磁活動偏高，GPS 可能受輕微影響` }
   }
   return { status: 'good' }
 }
@@ -154,8 +157,8 @@ const SCORE_WEIGHTS: Record<string, number> = {
   '降水量':   0.20,
   '能見度':   0.15,
   '溫度':     0.08,
-  '飛行時段': 0.08,
-  'Kp 指數':  0.05,
+  '飛行時段': 0.05,
+  'Kp 指數':  0.08,
   '飛行高度': 0.04,
   '天氣狀況': 0.00, // already captured by precipitation/wind; extra safety net
   '風向':     0.00, // informational only
@@ -270,7 +273,16 @@ export function computeFlightScore(
     return sum + statusScore(item.status) * w
   }, 0)
 
-  return { overall, score: Math.round(weightedScore / totalWeight), items }
+  let score = Math.round(weightedScore / totalWeight)
+
+  // Hard limits → force 禁飛
+  if (altResult.status === 'danger') score = Math.min(score, 65)
+  if (tempResult.status === 'danger') score = Math.min(score, 65)
+  if (windResult.status === 'danger') score = Math.min(score, 65)   // exceeds drone wind rating
+  if (codeResult.status === 'danger') score = Math.min(score, 65)   // thunderstorm / heavy snow
+  if (rainResult.status === 'danger' && drone.rainResistance === 'none') score = Math.min(score, 65) // rain, no waterproofing
+
+  return { overall, score, items }
 }
 
 export function windSpeedToBeaufort(ms: number): number {
