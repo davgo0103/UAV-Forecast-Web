@@ -108,11 +108,12 @@ export default function MapOverlayLayers({
     <>
       {layers.radar && radarUrl && (
         <TileLayer
+          key={radarUrl}
           url={radarUrl}
           opacity={0.65}
           attribution='<a href="https://www.rainviewer.com/" target="_blank">RainViewer</a>'
           zIndex={200}
-          maxNativeZoom={18}
+          maxNativeZoom={7}
         />
       )}
       {layers.clouds && owmKey && (

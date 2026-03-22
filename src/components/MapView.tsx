@@ -176,7 +176,7 @@ export default function MapView() {
         if (!past.length) return
         const latest = past[past.length - 1]
         setRadarUrl(
-          `https://tilecache.rainviewer.com${latest.path}/256/{z}/{x}/{y}/2/1_1.png`
+          `https://tilecache.rainviewer.com${latest.path}/512/{z}/{x}/{y}/2/1_1.png`
         )
       })
       .catch(() => {})
