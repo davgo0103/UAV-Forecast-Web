@@ -60,7 +60,7 @@ export const useStore = create<AppState>((set) => ({
   addCustomDrone: (drone) =>
     set((state) => ({ customDrones: [...state.customDrones, drone] })),
 
-  aglHeight: 100,
+  aglHeight: 60,
   setAglHeight: (h) => set({ aglHeight: h }),
 
   currentWeather: null,

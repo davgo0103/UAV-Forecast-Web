@@ -20,15 +20,15 @@ export default function AltitudeInput() {
           </div>
           <input
             type="range"
-            min={10}
+            min={1}
             max={1000}
-            step={10}
+            step={1}
             value={aglHeight}
             onChange={(e) => setAglHeight(parseInt(e.target.value))}
             className="w-full h-1.5 rounded-full appearance-none bg-dark-500 accent-accent-blue cursor-pointer"
           />
           <div className="flex justify-between text-xs text-slate-500 mt-1">
-            <span>10m</span>
+            <span>1m</span>
             <span>1000m</span>
           </div>
         </div>
