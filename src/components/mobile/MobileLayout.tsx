@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Map, Settings2, Wind, Loader2, AlertCircle } from 'lucide-react'
+import { Map, Settings2, Wind, Loader2, AlertCircle, RefreshCw } from 'lucide-react'
 import SearchBar from '../SearchBar'
 import LocateButton from '../LocateButton'
 import FlightScoreCard from '../FlightScoreCard'
@@ -46,6 +46,7 @@ export default function MobileLayout({
   kpData,
 }: Props) {
   const weatherModel = useStore((s) => s.weatherModel)
+  const dataWarnings = useStore((s) => s.dataWarnings)
   const [mapOpen, setMapOpen] = useState(false)
   const [mapEverOpened, setMapEverOpened] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -160,10 +161,19 @@ export default function MobileLayout({
           )}
 
           {/* Credit */}
-          <div className="flex items-center justify-end pr-1 gap-3">
-            {weatherModel && weatherModel !== 'best_match' && (
-              <span className="text-xs text-slate-500">model: {weatherModel}</span>
-            )}
+          <div className="flex items-center justify-between pr-1">
+            {displayWeather ? (
+              <div className="flex items-center gap-1.5 text-xs text-slate-500 flex-wrap">
+                <RefreshCw className="w-3 h-3" />
+                <span>更新於 {displayWeather.updatedAt}</span>
+                {weatherModel && weatherModel !== 'best_match' && (
+                  <span>· {weatherModel}</span>
+                )}
+                {dataWarnings.length > 0 && (
+                  <span className="text-accent-yellow/70">· ⚠ API 達上限部分功能降級</span>
+                )}
+              </div>
+            ) : <div />}
             <CreditCard />
           </div>
 

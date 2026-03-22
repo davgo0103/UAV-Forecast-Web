@@ -1,6 +1,8 @@
 import axios from 'axios'
 import { CurrentWeather, HourlyForecast, UpperWindData, AltitudeWindProfile } from '../types'
 import { WEATHER_CODE_MAP } from '../data/drones'
+import { fetchWeatherApiFallback } from './weatherApi'
+import { fetchMetNorwayFallback } from './metNorway'
 
 const BASE_URL = 'https://api.open-meteo.com/v1'
 
@@ -165,6 +167,18 @@ export async function fetchAllWeatherData(lat: number, lon: number): Promise<{
     if (reason.toLowerCase().includes('limit')) {
       const stale = readWeatherCache(lat, lon, true)
       if (stale) return stale
+      // No stale cache — try WeatherAPI, then MET Norway
+      let fb: Awaited<ReturnType<typeof fetchWeatherApiFallback>>
+      let fbModel: string
+      try {
+        fb = await fetchWeatherApiFallback(lat, lon)
+        fbModel = 'WeatherAPI'
+      } catch {
+        fb = await fetchMetNorwayFallback(lat, lon)
+        fbModel = 'MET Norway'
+      }
+      const elevation = await fetchElevation(lat, lon)
+      return { ...fb, upperWinds: [] as UpperWindData[], elevation, model: fbModel }
     }
     throw err
   }

@@ -18,6 +18,7 @@ export function useWeatherData() {
     clearWeather,
     setLocationTimezone,
     setWeatherModel,
+    setDataWarnings,
   } = useStore()
 
   useEffect(() => {
@@ -47,6 +48,16 @@ export function useWeatherData() {
 
         setLocationTimezone(timezone)
         setWeatherModel(model)
+
+        const warnings: string[] = []
+        if (model === 'WeatherAPI' || model === 'MET Norway') {
+          warnings.push('高度風速以地面風推算（無壓力層資料）')
+        }
+        if (model === 'MET Norway') {
+          warnings.push('能見度資料固定 10km')
+          warnings.push('夜間飛行判斷不可用（無日出日落）')
+        }
+        setDataWarnings(warnings)
         setCurrentWeather(current)
         setHourlyForecast(hourly)
         setTerrainElevation(roundedElev)

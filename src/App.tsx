@@ -73,6 +73,7 @@ export default function App() {
     error,
     locationTimezone,
     weatherModel,
+    dataWarnings,
   } = useStore()
 
   const LAPSE_RATE = 6.5 / 1000 // °C per meter
@@ -308,6 +309,9 @@ export default function App() {
               <span>更新於 {currentWeather.updatedAt}</span>
               {weatherModel && weatherModel !== 'best_match' && (
                 <span className="text-slate-500">· {weatherModel}</span>
+              )}
+              {dataWarnings.length > 0 && (
+                <span className="text-accent-yellow/70">· ⚠ API 達上限部分功能降級</span>
               )}
             </div>
           )}

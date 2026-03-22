@@ -43,6 +43,10 @@ interface AppState {
   weatherModel: string | null
   setWeatherModel: (m: string) => void
 
+  // Degraded-data warnings (shown when using fallback API)
+  dataWarnings: string[]
+  setDataWarnings: (w: string[]) => void
+
   // Loading states
   isLoadingWeather: boolean
   isLoadingKp: boolean
@@ -94,6 +98,9 @@ export const useStore = create<AppState>((set) => ({
 
   weatherModel: null,
   setWeatherModel: (m) => set({ weatherModel: m }),
+
+  dataWarnings: [],
+  setDataWarnings: (w) => set({ dataWarnings: w }),
 
   isLoadingWeather: false,
   isLoadingKp: false,
