@@ -44,7 +44,13 @@ export default function MobileLayout({
   kpData,
 }: Props) {
   const [mapOpen, setMapOpen] = useState(false)
+  const [mapEverOpened, setMapEverOpened] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
+
+  function openMap() {
+    setMapEverOpened(true)
+    setMapOpen(true)
+  }
 
   return (
     <div
@@ -76,7 +82,7 @@ export default function MobileLayout({
 
           {/* Open Map Button */}
           <button
-            onClick={() => setMapOpen(true)}
+            onClick={openMap}
             className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-dark-700 border border-dark-600 active:bg-dark-600 transition-colors"
           >
             <div className="w-8 h-8 rounded-lg bg-accent-blue/20 flex items-center justify-center flex-shrink-0">
@@ -160,8 +166,9 @@ export default function MobileLayout({
       </div>
 
       {/* Overlays */}
-      {mapOpen && (
+      {mapEverOpened && (
         <MobileMapOverlay
+          visible={mapOpen}
           onClose={() => setMapOpen(false)}
           flightStatus={flightScore?.overall}
         />

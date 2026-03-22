@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { X, MapPin } from 'lucide-react'
 import MapView from '../MapView'
@@ -5,6 +6,7 @@ import { useStore } from '../../store/useStore'
 import { FlightStatus } from '../../types'
 
 interface Props {
+  visible: boolean
   onClose: () => void
   flightStatus?: FlightStatus
 }
@@ -20,12 +22,21 @@ const STATUS_LABEL: Record<FlightStatus, string> = {
   danger: '不建議飛行',
 }
 
-export default function MobileMapOverlay({ onClose, flightStatus }: Props) {
+export default function MobileMapOverlay({ visible, onClose, flightStatus }: Props) {
   const location = useStore((s) => s.location)
 
+  // When becoming visible, trigger a resize so Leaflet recalculates map dimensions
+  useEffect(() => {
+    if (visible) {
+      setTimeout(() => window.dispatchEvent(new Event('resize')), 50)
+    }
+  }, [visible])
+
   return createPortal(
-    <div className="fixed inset-0 z-[9999] flex flex-col bg-dark-900"
-      style={{ paddingTop: 'env(safe-area-inset-top)' }}>
+    <div
+      className="fixed inset-0 z-[9999] flex flex-col bg-dark-900"
+      style={{ paddingTop: 'env(safe-area-inset-top)', display: visible ? undefined : 'none' }}
+    >
 
       {/* Top bar */}
       <div className="flex items-center gap-3 px-4 py-3 bg-dark-800/90 backdrop-blur-sm border-b border-dark-600">
