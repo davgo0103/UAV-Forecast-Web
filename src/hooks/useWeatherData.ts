@@ -22,13 +22,18 @@ export function useWeatherData() {
   useEffect(() => {
     if (!location) return
 
+    let isFirstLoad = true
+
     async function load() {
       if (!location) return
       setIsLoadingWeather(true)
       setError(null)
 
-      // Clear stale data immediately so old location's info isn't shown during load
-      clearWeather()
+      // Only clear stale data on location change — auto-refresh updates in place
+      if (isFirstLoad) {
+        clearWeather()
+        isFirstLoad = false
+      }
 
       try {
         // Single combined request — weather + hourly + pressure winds + elevation

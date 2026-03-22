@@ -194,7 +194,7 @@ export default function App() {
 
       <div className="flex flex-1 overflow-hidden">
         {/* Left sidebar */}
-        <div className="w-80 flex-shrink-0 flex flex-col border-r border-dark-600 overflow-y-auto">
+        <div className="w-[350px] flex-shrink-0 flex flex-col border-r border-dark-600 overflow-y-auto">
           <div className="p-4 space-y-3 border-b border-dark-600">
             <SearchBar />
             <LocateButton />
