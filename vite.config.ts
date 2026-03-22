@@ -10,6 +10,11 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/caa-gis/, ''),
       },
+      '/opentopodata': {
+        target: 'https://api.opentopodata.org',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/opentopodata/, ''),
+      },
     },
   },
   preview: {
@@ -18,6 +23,11 @@ export default defineConfig({
         target: 'https://dronegis.caa.gov.tw',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/caa-gis/, ''),
+      },
+      '/opentopodata': {
+        target: 'https://api.opentopodata.org',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/opentopodata/, ''),
       },
     },
   },

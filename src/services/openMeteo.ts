@@ -57,7 +57,8 @@ async function withRetry<T>(fn: () => Promise<T>, retries = 2, delayMs = 800): P
   try {
     return await fn()
   } catch (err) {
-    if (retries <= 0) throw err
+    const status = (err as { response?: { status?: number } })?.response?.status
+    if (retries <= 0 || (status != null && status >= 400 && status < 500)) throw err
     await new Promise((r) => setTimeout(r, delayMs))
     return withRetry(fn, retries - 1, delayMs * 1.5)
   }
@@ -177,7 +178,7 @@ export async function fetchAllWeatherData(lat: number, lon: number): Promise<{
         fb = await fetchMetNorwayFallback(lat, lon)
         fbModel = 'MET Norway'
       }
-      const elevation = await fetchElevation(lat, lon)
+      const elevation = await fetchElevationFallback(lat, lon)
       return { ...fb, upperWinds: [] as UpperWindData[], elevation, model: fbModel }
     }
     throw err
@@ -236,6 +237,19 @@ export async function fetchElevation(lat: number, lon: number): Promise<number> 
     return response.data.elevation?.[0] ?? 0
   } catch (err) {
     if (import.meta.env.DEV) console.warn('[openMeteo] fetchElevation failed:', err)
+    return 0
+  }
+}
+
+async function fetchElevationFallback(lat: number, lon: number): Promise<number> {
+  try {
+    const response = await axios.get('/opentopodata/v1/srtm90m', {
+      timeout: 8000,
+      params: { locations: `${lat},${lon}` },
+    })
+    return response.data.results?.[0]?.elevation ?? 0
+  } catch (err) {
+    if (import.meta.env.DEV) console.warn('[openTopoData] fetchElevationFallback failed:', err)
     return 0
   }
 }

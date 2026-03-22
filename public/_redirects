@@ -1,1 +1,2 @@
-/caa-gis/*  https://dronegis.caa.gov.tw/:splat  200
+/caa-gis/*       https://dronegis.caa.gov.tw/:splat       200
+/opentopodata/*  https://api.opentopodata.org/:splat      200

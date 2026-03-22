@@ -19,7 +19,7 @@ export default function CreditCard() {
       {/* Trigger */}
       <button
         onClick={() => setOpen(true)}
-        className="text-xs text-slate-700 hover:text-slate-400 transition-colors select-none"
+        className="text-xs text-slate-700 hover:text-slate-400 transition-colors select-none whitespace-nowrap"
       >
         Crafted by 小蔡
       </button>
