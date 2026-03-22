@@ -109,6 +109,32 @@ function getKpStatus(kp: number): { status: FlightStatus; reason?: string } {
   return { status: 'good' }
 }
 
+function getAltitudeStatus(altitudeMSL: number, drone: DroneSpec): { status: FlightStatus; reason?: string } {
+  if (altitudeMSL > drone.maxAltitude) {
+    return { status: 'danger', reason: `飛行海拔 ${altitudeMSL}m 超過 ${drone.name} 最大限制 ${drone.maxAltitude}m` }
+  }
+  if (altitudeMSL > drone.maxAltitude * 0.85) {
+    return { status: 'caution', reason: `飛行海拔接近 ${drone.name} 上限（${drone.maxAltitude}m）` }
+  }
+  return { status: 'good' }
+}
+
+function getWeatherCodeStatus(code: number): { status: FlightStatus; reason?: string } {
+  // Thunderstorm
+  if (code === 95 || code === 96 || code === 99) {
+    return { status: 'danger', reason: '雷暴天氣，禁止飛行' }
+  }
+  // Heavy snow
+  if (code === 75) {
+    return { status: 'danger', reason: '大雪，能見度與機體安全受影響' }
+  }
+  // Moderate snow / heavy drizzle
+  if (code === 73 || code === 55) {
+    return { status: 'caution', reason: '降雪或強毛毛雨，建議謹慎評估' }
+  }
+  return { status: 'good' }
+}
+
 function worstStatus(statuses: FlightStatus[]): FlightStatus {
   if (statuses.includes('danger')) return 'danger'
   if (statuses.includes('caution')) return 'caution'
@@ -121,6 +147,20 @@ function statusScore(status: FlightStatus): number {
   return 15
 }
 
+// Weights must sum to 1.0; wind direction is display-only (weight 0)
+const SCORE_WEIGHTS: Record<string, number> = {
+  '風速':     0.25,
+  '陣風':     0.15,
+  '降水量':   0.20,
+  '能見度':   0.15,
+  '溫度':     0.08,
+  '飛行時段': 0.08,
+  'Kp 指數':  0.05,
+  '飛行高度': 0.04,
+  '天氣狀況': 0.00, // already captured by precipitation/wind; extra safety net
+  '風向':     0.00, // informational only
+}
+
 function windDirectionLabel(deg: number): string {
   const dirs = ['北', '北北東', '東北', '東北東', '東', '東南東', '東南', '南南東',
     '南', '南南西', '西南', '西南西', '西', '西北西', '西北', '北北西']
@@ -131,7 +171,8 @@ export function computeFlightScore(
   weather: CurrentWeather,
   drone: DroneSpec,
   kp: KpData | null,
-  effectiveWindSpeed?: number // wind at flight altitude
+  effectiveWindSpeed?: number,
+  altitudeMSL?: number
 ): FlightScore {
   const windSpeedToEval = effectiveWindSpeed ?? weather.windSpeed
 
@@ -141,6 +182,8 @@ export function computeFlightScore(
   const rainResult = getPrecipitationStatus(weather.precipitation, drone)
   const kpResult = kp ? getKpStatus(kp.current) : { status: 'good' as FlightStatus }
   const nightResult = getNightStatus(weather)
+  const altResult = altitudeMSL != null ? getAltitudeStatus(altitudeMSL, drone) : { status: 'good' as FlightStatus }
+  const codeResult = getWeatherCodeStatus(weather.weatherCode)
 
   const items: FlightScoreItem[] = [
     {
@@ -201,15 +244,33 @@ export function computeFlightScore(
       status: nightResult.status,
       reason: nightResult.reason,
     },
+    {
+      label: '飛行高度',
+      value: altitudeMSL != null ? `${altitudeMSL}` : '-',
+      unit: 'm ASL',
+      status: altResult.status,
+      reason: altResult.reason,
+    },
+    {
+      label: '天氣狀況',
+      value: weather.weatherDescription,
+      unit: '',
+      status: codeResult.status,
+      reason: codeResult.reason,
+    },
   ]
 
   const allStatuses = items.map((i) => i.status)
   const overall = worstStatus(allStatuses)
 
-  const avgScore =
-    items.reduce((sum, item) => sum + statusScore(item.status), 0) / items.length
+  // Weighted score — items with weight 0 are display-only
+  const totalWeight = Object.values(SCORE_WEIGHTS).reduce((a, b) => a + b, 0)
+  const weightedScore = items.reduce((sum, item) => {
+    const w = SCORE_WEIGHTS[item.label] ?? 0
+    return sum + statusScore(item.status) * w
+  }, 0)
 
-  return { overall, score: Math.round(avgScore), items }
+  return { overall, score: Math.round(weightedScore / totalWeight), items }
 }
 
 export function windSpeedToBeaufort(ms: number): number {

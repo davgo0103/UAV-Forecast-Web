@@ -68,6 +68,7 @@ export default function App() {
     selectedDrone,
     selectedHourIndex,
     aglHeight,
+    terrainElevation,
     isLoadingWeather,
     error,
     locationTimezone,
@@ -163,7 +164,7 @@ export default function App() {
     : displayWeather
 
   const flightScore = weatherForScore
-    ? computeFlightScore(weatherForScore, selectedDrone, effectiveKpData, effectiveAltitudeWind)
+    ? computeFlightScore(weatherForScore, selectedDrone, effectiveKpData, effectiveAltitudeWind, terrainElevation + aglHeight)
     : null
 
   const [chartCollapsed, setChartCollapsed] = useState(false)

@@ -26,7 +26,8 @@ function statusBg(status: FlightStatus) {
   return 'bg-accent-red/10 border-accent-red/30'
 }
 
-function statusLabel(status: FlightStatus) {
+function statusLabel(status: FlightStatus, score: number) {
+  if (score < 70) return '禁飛'
   if (status === 'good') return '適合飛行'
   if (status === 'caution') return '謹慎飛行'
   return '不建議飛行'
@@ -40,7 +41,7 @@ export default function FlightScoreCard({ score, droneName, isForecast }: Props)
         <StatusIcon status={score.overall} size="lg" />
         <div className="flex-1">
           <div className={`text-xl font-bold ${statusColor(score.overall)}`}>
-            {statusLabel(score.overall)}
+            {statusLabel(score.overall, score.score)}
           </div>
           <div className="flex items-center gap-1.5 text-xs text-slate-400 mt-0.5">
             {isForecast && <Clock className="w-3 h-3 text-accent-cyan" />}
