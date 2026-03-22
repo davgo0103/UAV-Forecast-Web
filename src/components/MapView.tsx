@@ -117,7 +117,7 @@ export default function MapView() {
   // null = not checked yet, true = valid, false = invalid/not activated
   const [owmValid, setOwmValid] = useState<null | boolean>(null)
 
-  const owmKey = (import.meta as unknown as { env: Record<string, string> }).env.VITE_OWM_API_KEY ?? ''
+  const owmKey = import.meta.env.VITE_OWM_API_KEY ?? ''
 
   // Validate OWM key on mount if key is present
   useEffect(() => {
@@ -179,7 +179,7 @@ export default function MapView() {
           `https://tilecache.rainviewer.com${latest.path}/512/{z}/{x}/{y}/2/1_1.png`
         )
       })
-      .catch(() => {})
+      .catch((err) => { if (import.meta.env.DEV) console.warn('[MapView] radar URL fetch failed:', err) })
   }, [layers.radar])
 
   const toggleLayer = (key: keyof LayerState) => {

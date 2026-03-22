@@ -25,8 +25,8 @@ export default function SearchBar() {
         const data = await searchLocation(query)
         setResults(data)
         setShowDropdown(true)
-      } catch {
-        // ignore
+      } catch (err) {
+        if (import.meta.env.DEV) console.warn('[SearchBar] search failed:', err)
       } finally {
         setIsLoading(false)
       }

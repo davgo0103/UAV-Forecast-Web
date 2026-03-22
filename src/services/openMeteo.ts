@@ -96,7 +96,8 @@ async function fetchUpperWindsSilent(lat: number, lon: number): Promise<UpperWin
       windSpeed: h[`wind_speed_${level.hPa}hPa`]?.[0] ?? 0,
       windDirection: h[`wind_direction_${level.hPa}hPa`]?.[0] ?? 0,
     })).filter((w) => w.windSpeed > 0)
-  } catch {
+  } catch (err) {
+    if (import.meta.env.DEV) console.warn('[openMeteo] fetchUpperWinds failed:', err)
     return [] // non-fatal — fall back to surface wind only
   }
 }
@@ -163,7 +164,8 @@ export async function fetchElevation(lat: number, lon: number): Promise<number> 
       })
     )
     return response.data.elevation?.[0] ?? 0
-  } catch {
+  } catch (err) {
+    if (import.meta.env.DEV) console.warn('[openMeteo] fetchElevation failed:', err)
     return 0
   }
 }

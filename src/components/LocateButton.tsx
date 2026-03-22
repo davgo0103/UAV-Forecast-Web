@@ -28,7 +28,8 @@ export default function LocateButton() {
           setTerrainElevation(roundedElev)
 
           setLocation({ lat, lon, name: loc.name, elevation: roundedElev })
-        } catch {
+        } catch (err) {
+          if (import.meta.env.DEV) console.warn('[LocateButton] geocoding failed:', err)
           // If geocoding fails, still set location with coordinates
           setLocation({ lat, lon, name: `${lat.toFixed(4)}, ${lon.toFixed(4)}` })
         }

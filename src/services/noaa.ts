@@ -87,8 +87,8 @@ export async function fetchKpIndex(): Promise<KpData> {
         .filter(row => dayjs.utc(row[0]).diff(nowUtc, 'minute') >= -90)
         .map(row => ({ time: row[0], kp: parseFloat(row[1] ?? '0') }))
     }
-  } catch {
-    // fallback: keep defaults
+  } catch (err) {
+    if (import.meta.env.DEV) console.warn('[noaa] fetchKpIndex failed:', err)
   }
 
   return {
