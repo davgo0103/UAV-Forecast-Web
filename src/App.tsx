@@ -180,6 +180,7 @@ export default function App() {
         selectedHourIndex={selectedHourIndex}
         altitudeProfile={altitudeWindProfile}
         effectiveAltitudeWind={effectiveAltitudeWind}
+        altitudeTemperature={altitudeTemperature ?? undefined}
         isLoadingWeather={isLoadingWeather}
         error={error}
         kpData={effectiveKpData}

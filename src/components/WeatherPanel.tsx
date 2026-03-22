@@ -109,9 +109,9 @@ export default function WeatherPanel({ weather, altitudeProfile, effectiveAltitu
             <div className="text-xs text-accent-cyan mb-2">
               飛行高度風速{displayAltWindAlt ? `（${displayAltWindAlt}m ASL）` : '（預估）'}
             </div>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center w-full gap-2">
               {/* Left: arrow + speed */}
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 flex-1">
                 {displayAltWindDir != null && (
                   <div className="flex flex-col items-center gap-0.5">
                     <WindDirectionArrow degrees={displayAltWindDir} variant="altitude" />
@@ -130,7 +130,7 @@ export default function WeatherPanel({ weather, altitudeProfile, effectiveAltitu
                 </div>
               </div>
               {/* Right: temperature + diff */}
-              <div className="text-right space-y-1">
+              <div className="flex-1 text-right space-y-1">
                 {altitudeTemperature != null && (
                   <div>
                     <div className="text-xs text-slate-400">飛行高度溫度</div>

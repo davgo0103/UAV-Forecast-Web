@@ -24,6 +24,7 @@ interface Props {
   selectedHourIndex: number
   altitudeProfile: AltitudeWindProfile | null
   effectiveAltitudeWind: number | undefined
+  altitudeTemperature: number | undefined
   isLoadingWeather: boolean
   error: string | null
   kpData: ReturnType<typeof useStore.getState>['kpData']
@@ -39,6 +40,7 @@ export default function MobileLayout({
   selectedHourIndex,
   altitudeProfile,
   effectiveAltitudeWind,
+  altitudeTemperature,
   isLoadingWeather,
   error,
   kpData,
@@ -138,6 +140,7 @@ export default function MobileLayout({
               weather={displayWeather}
               altitudeProfile={selectedHourIndex === 0 ? altitudeProfile : null}
               effectiveAltitudeWind={selectedHourIndex > 0 ? effectiveAltitudeWind : undefined}
+              altitudeTemperature={altitudeTemperature}
             />
           )}
 
