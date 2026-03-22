@@ -108,6 +108,7 @@ export async function fetchAllWeatherData(lat: number, lon: number): Promise<{
   upperWinds: UpperWindData[]
   elevation: number
   timezone: string
+  model: string
 }> {
   // Main weather is required; upper winds are optional (run in parallel)
   const [d, upperWinds] = await Promise.all([
@@ -152,7 +153,7 @@ export async function fetchAllWeatherData(lat: number, lon: number): Promise<{
     weatherCode: d.hourly.weather_code[i],
   }))
 
-  return { current, hourly, upperWinds, elevation, timezone: d.timezone ?? 'Asia/Taipei' }
+  return { current, hourly, upperWinds, elevation, timezone: d.timezone ?? 'Asia/Taipei', model: d.model ?? 'best_match' }
 }
 
 export async function fetchElevation(lat: number, lon: number): Promise<number> {

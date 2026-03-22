@@ -45,6 +45,7 @@ export default function MobileLayout({
   error,
   kpData,
 }: Props) {
+  const weatherModel = useStore((s) => s.weatherModel)
   const [mapOpen, setMapOpen] = useState(false)
   const [mapEverOpened, setMapEverOpened] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -159,7 +160,10 @@ export default function MobileLayout({
           )}
 
           {/* Credit */}
-          <div className="flex justify-end pr-1">
+          <div className="flex items-center justify-end pr-1 gap-3">
+            {weatherModel && weatherModel !== 'best_match' && (
+              <span className="text-xs text-slate-500">model: {weatherModel}</span>
+            )}
             <CreditCard />
           </div>
 

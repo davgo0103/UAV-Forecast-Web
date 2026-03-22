@@ -39,6 +39,10 @@ interface AppState {
   selectedHourIndex: number
   setSelectedHourIndex: (i: number) => void
 
+  // Weather model
+  weatherModel: string | null
+  setWeatherModel: (m: string) => void
+
   // Loading states
   isLoadingWeather: boolean
   isLoadingKp: boolean
@@ -87,6 +91,9 @@ export const useStore = create<AppState>((set) => ({
 
   selectedHourIndex: 0,
   setSelectedHourIndex: (i) => set({ selectedHourIndex: i }),
+
+  weatherModel: null,
+  setWeatherModel: (m) => set({ weatherModel: m }),
 
   isLoadingWeather: false,
   isLoadingKp: false,

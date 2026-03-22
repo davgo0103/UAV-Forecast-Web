@@ -72,6 +72,7 @@ export default function App() {
     isLoadingWeather,
     error,
     locationTimezone,
+    weatherModel,
   } = useStore()
 
   const LAPSE_RATE = 6.5 / 1000 // °C per meter
@@ -305,6 +306,9 @@ export default function App() {
             <div className="px-4 pb-3 flex items-center gap-1.5 text-xs text-slate-600">
               <RefreshCw className="w-3 h-3" />
               <span>更新於 {currentWeather.updatedAt}</span>
+              {weatherModel && weatherModel !== 'best_match' && (
+                <span className="text-slate-500">· {weatherModel}</span>
+              )}
             </div>
           )}
         </div>
