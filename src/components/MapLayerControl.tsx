@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Layers, CloudRain, Cloud, Wind, PlaneTakeoff, Trees, Loader2, Footprints } from 'lucide-react'
+import { Layers, CloudRain, Cloud, Wind, PlaneTakeoff, Trees, Loader2, Footprints, Plane } from 'lucide-react'
 import { LayerState } from './MapOverlayLayers'
 
 export type BaseMapKey = 'dark' | 'satellite' | 'terrain' | 'hiking'
@@ -26,11 +26,12 @@ const OVERLAY_OPTIONS: {
   Icon: React.ComponentType<{ className?: string }>
   needsOwm?: boolean
 }[] = [
+  { key: 'airspace', label: '管制空域', Icon: PlaneTakeoff },
+  { key: 'parks', label: '國家公園', Icon: Trees },
+  { key: 'aircraft', label: '即時航班', Icon: Plane },
   { key: 'radar', label: '雷達回波', Icon: CloudRain },
   { key: 'clouds', label: '雲層', Icon: Cloud, needsOwm: true },
   { key: 'wind', label: '風場動畫', Icon: Wind },
-  { key: 'airspace', label: '管制空域', Icon: PlaneTakeoff },
-  { key: 'parks', label: '國家公園', Icon: Trees },
   { key: 'hikingTrails', label: '登山路徑', Icon: Footprints },
 ]
 

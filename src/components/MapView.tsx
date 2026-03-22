@@ -100,11 +100,12 @@ export default function MapView() {
     setSelectedAirspace(info)
   }, [])
   const [layers, setLayers] = useState<LayerState>({
+    airspace: true,
+    parks: true,
+    aircraft: false,
     radar: false,
     clouds: false,
     wind: false,
-    airspace: true,
-    parks: true,
     hikingTrails: false,
   })
   const [radarUrl, setRadarUrl] = useState<string | null>(null)

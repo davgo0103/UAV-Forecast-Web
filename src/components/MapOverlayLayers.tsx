@@ -4,13 +4,15 @@ import L from 'leaflet'
 import type { FeatureCollection, Feature } from 'geojson'
 import type { PathOptions } from 'leaflet'
 import WindVelocityLayer from './WindVelocityLayer'
+import AircraftLayer from './AircraftLayer'
 
 export interface LayerState {
+  airspace: boolean
+  parks: boolean
+  aircraft: boolean
   radar: boolean
   clouds: boolean
   wind: boolean
-  airspace: boolean
-  parks: boolean
   hikingTrails: boolean
 }
 
@@ -143,6 +145,7 @@ export default function MapOverlayLayers({
           onEachFeature={makeOnEachAirspace(onAirspaceClick)}
         />
       )}
+      {layers.aircraft && <AircraftLayer />}
       {layers.hikingTrails && (
         <TileLayer
           url="https://tile.waymarkedtrails.org/hiking/{z}/{x}/{y}.png"
