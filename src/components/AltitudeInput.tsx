@@ -17,23 +17,26 @@ export default function AltitudeInput() {
         <div>
           <div className="flex justify-between text-xs text-slate-400 mb-1.5">
             <span>離地高度 (AGL)</span>
-            <span className="text-white font-mono">{aglHeight} m</span>
+            <span className="font-mono">
+              <span className="text-white">{aglHeight} m</span>
+              <span className="text-slate-500 ml-1.5">{Math.round(aglHeight * 3.28084)} ft</span>
+            </span>
           </div>
           <input
             type="range"
-            min={1}
+            min={0}
             max={1000}
-            step={1}
+            step={5}
             value={aglHeight}
             onChange={(e) => {
               const v = parseInt(e.target.value)
               setAglHeight(v)
-              v === 1 || v === 1000 ? hapticBump() : hapticTick()
+              v === 0 || v === 1000 ? hapticBump() : hapticTick()
             }}
             className="w-full h-1.5 rounded-full appearance-none bg-dark-500 accent-accent-blue cursor-pointer"
           />
           <div className="flex justify-between text-xs text-slate-500 mt-1">
-            <span>1m</span>
+            <span>0m</span>
             <span>1000m</span>
           </div>
         </div>
