@@ -69,6 +69,10 @@ export function useWeatherData() {
     }
 
     load()
+
+    // Auto-refresh every 30 minutes while page stays open
+    const id = setInterval(load, 30 * 60 * 1000)
+    return () => clearInterval(id)
   }, [location]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Recalculate altitude wind profile when AGL changes

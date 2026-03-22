@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import dayjs from 'dayjs'
 import { Loader2, MapPin, AlertCircle, RefreshCw, ChevronDown, BarChart2 } from 'lucide-react'
 import Header from './components/Header'
@@ -77,15 +77,22 @@ export default function App() {
 
   const MAX_HOURS = 48
 
+  // Current minute — updates every 60s so nowForecastIndex stays accurate when page is left open
+  const [nowMinute, setNowMinute] = useState(() => dayjs().startOf('hour').valueOf())
+  useEffect(() => {
+    const id = setInterval(() => setNowMinute(dayjs().startOf('hour').valueOf()), 60_000)
+    return () => clearInterval(id)
+  }, [])
+
   // Find the index of the current hour in hourlyForecast
   // Compare using location's timezone so non-Taiwan locations are correct
   const nowForecastIndex = useMemo(() => {
     if (hourlyForecast.length === 0) return 0
     // Truncate to the current hour so 09:19 maps to the 09:00 slot, not 10:00
-    const nowLocal = dayjs().tz(locationTimezone).startOf('hour').format('YYYY-MM-DDTHH:mm')
+    const nowLocal = dayjs(nowMinute).tz(locationTimezone).startOf('hour').format('YYYY-MM-DDTHH:mm')
     const idx = hourlyForecast.findIndex((f) => f.time >= nowLocal)
     return idx === -1 ? 0 : idx
-  }, [hourlyForecast, locationTimezone])
+  }, [hourlyForecast, locationTimezone, nowMinute])
 
   // Forecast starting from the current hour
   const forecastFromNow = useMemo(
