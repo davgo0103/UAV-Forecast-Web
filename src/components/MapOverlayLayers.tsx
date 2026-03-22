@@ -112,6 +112,7 @@ export default function MapOverlayLayers({
           opacity={0.65}
           attribution='<a href="https://www.rainviewer.com/" target="_blank">RainViewer</a>'
           zIndex={200}
+          maxNativeZoom={18}
         />
       )}
       {layers.clouds && owmKey && (
@@ -119,6 +120,7 @@ export default function MapOverlayLayers({
           url={`https://tile.openweathermap.org/map/clouds_new/{z}/{x}/{y}.png?appid=${owmKey}`}
           opacity={0.5}
           zIndex={201}
+          maxNativeZoom={18}
         />
       )}
       {layers.wind && (
@@ -146,6 +148,7 @@ export default function MapOverlayLayers({
           opacity={0.8}
           attribution='&copy; <a href="https://hiking.waymarkedtrails.org" target="_blank">Waymarked Trails</a>'
           zIndex={210}
+          maxNativeZoom={19}
         />
       )}
     </>
