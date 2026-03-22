@@ -11,6 +11,7 @@ export interface LayerState {
   wind: boolean
   airspace: boolean
   parks: boolean
+  hikingTrails: boolean
 }
 
 export type AirspaceInfo = Record<string, string | null> & { _type: 'airspace' | 'park' }
@@ -137,6 +138,14 @@ export default function MapOverlayLayers({
           data={airspaceData}
           style={airspaceStyle}
           onEachFeature={makeOnEachAirspace(onAirspaceClick)}
+        />
+      )}
+      {layers.hikingTrails && (
+        <TileLayer
+          url="https://tile.waymarkedtrails.org/hiking/{z}/{x}/{y}.png"
+          opacity={0.8}
+          attribution='&copy; <a href="https://hiking.waymarkedtrails.org" target="_blank">Waymarked Trails</a>'
+          zIndex={210}
         />
       )}
     </>

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Layers, CloudRain, Cloud, Wind, PlaneTakeoff, Trees, Loader2 } from 'lucide-react'
+import { Layers, CloudRain, Cloud, Wind, PlaneTakeoff, Trees, Loader2, Footprints } from 'lucide-react'
 import { LayerState } from './MapOverlayLayers'
 
 export type BaseMapKey = 'dark' | 'satellite' | 'terrain' | 'hiking'
@@ -31,6 +31,7 @@ const OVERLAY_OPTIONS: {
   { key: 'wind', label: '風場動畫', Icon: Wind },
   { key: 'airspace', label: '管制空域', Icon: PlaneTakeoff },
   { key: 'parks', label: '國家公園', Icon: Trees },
+  { key: 'hikingTrails', label: '登山路徑', Icon: Footprints },
 ]
 
 function OwmStatusBadge({ owmValid }: { owmValid: null | boolean }) {

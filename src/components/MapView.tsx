@@ -105,6 +105,7 @@ export default function MapView() {
     wind: false,
     airspace: true,
     parks: true,
+    hikingTrails: false,
   })
   const [radarUrl, setRadarUrl] = useState<string | null>(null)
   const [airspaceData, setAirspaceData] = useState<FeatureCollection | null>(null)
@@ -203,6 +204,7 @@ export default function MapView() {
           key={baseMap}
           url={BASE_MAPS[baseMap].url}
           attribution={BASE_MAPS[baseMap].attribution}
+          maxNativeZoom={baseMap === 'hiking' ? 17 : 19}
         />
 
         {/* Only pass owmKey when confirmed valid to prevent 401 tile errors */}
