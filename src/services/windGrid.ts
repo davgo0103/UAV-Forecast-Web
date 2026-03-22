@@ -4,6 +4,39 @@ import utc from 'dayjs/plugin/utc'
 
 dayjs.extend(utc)
 
+// ── localStorage cache ────────────────────────────────────────────────────────
+const CACHE_TTL_MS = 60 * 60 * 1000 // 1 hour
+
+interface WindGridCache {
+  timestamp: number
+  data: VelocityData[]
+}
+
+function cacheKey(step: number) {
+  return `windgrid_${step}`
+}
+
+function readCache(step: number, ignoreExpiry = false): VelocityData[] | null {
+  try {
+    const raw = localStorage.getItem(cacheKey(step))
+    if (!raw) return null
+    const cache: WindGridCache = JSON.parse(raw)
+    if (!ignoreExpiry && Date.now() - cache.timestamp > CACHE_TTL_MS) return null
+    return cache.data
+  } catch {
+    return null
+  }
+}
+
+function writeCache(step: number, data: VelocityData[]): void {
+  try {
+    const cache: WindGridCache = { timestamp: Date.now(), data }
+    localStorage.setItem(cacheKey(step), JSON.stringify(cache))
+  } catch {
+    // localStorage 滿了或不可用，靜默忽略
+  }
+}
+
 export interface WindGridBounds {
   north: number
   south: number
@@ -42,6 +75,10 @@ export function stepForZoom(zoom: number): number {
 export async function fetchWindGrid(bounds: WindGridBounds, zoom: number): Promise<VelocityData[]> {
   let step = stepForZoom(zoom)
 
+  // Return cached data if still fresh (avoids hitting daily API limit on page refresh)
+  const cached = readCache(step)
+  if (cached) return cached
+
   // Snap bounds outward to grid
   const north = Math.min(85, Math.ceil(bounds.north / step) * step)
   const south = Math.max(-85, Math.floor(bounds.south / step) * step)
@@ -71,15 +108,22 @@ export async function fetchWindGrid(bounds: WindGridBounds, zoom: number): Promi
     }
   }
 
-  const res = await axios.get('https://api.open-meteo.com/v1/forecast', {
-    params: {
-      latitude: lats.join(','),
-      longitude: lons.join(','),
-      hourly: 'wind_u_component_10m,wind_v_component_10m',
-      forecast_days: 1,
-      wind_speed_unit: 'ms',
-    },
-  })
+  let res
+  try {
+    res = await axios.get('https://api.open-meteo.com/v1/forecast', {
+      params: {
+        latitude: lats.join(','),
+        longitude: lons.join(','),
+        hourly: 'wind_u_component_10m,wind_v_component_10m',
+        forecast_days: 1,
+        wind_speed_unit: 'ms',
+      },
+    })
+  } catch (err) {
+    const reason: string = (err as { response?: { data?: { reason?: string } } })?.response?.data?.reason ?? ''
+    const isRateLimit = reason.toLowerCase().includes('limit')
+    throw new WindRateLimitError(isRateLimit ? readCache(step, true) : null)
+  }
 
   const nowStr = dayjs.utc().format('YYYY-MM-DDTHH:00')
 
@@ -108,8 +152,19 @@ export async function fetchWindGrid(bounds: WindGridBounds, zoom: number): Promi
   const lo2 = round2(east, step)
   const header = { la1, lo1, la2, lo2, nx, ny, dx: step, dy: step }
 
-  return [
+  const result: VelocityData[] = [
     { header: { ...header, parameterCategory: 2, parameterNumber: 2 }, data: uData },
     { header: { ...header, parameterCategory: 2, parameterNumber: 3 }, data: vData },
   ]
+
+  writeCache(step, result)
+  return result
+}
+
+export class WindRateLimitError extends Error {
+  readonly stale: VelocityData[] | null
+  constructor(stale: VelocityData[] | null) {
+    super('rate_limited')
+    this.stale = stale
+  }
 }

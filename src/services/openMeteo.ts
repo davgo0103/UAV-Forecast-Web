@@ -4,6 +4,43 @@ import { WEATHER_CODE_MAP } from '../data/drones'
 
 const BASE_URL = 'https://api.open-meteo.com/v1'
 
+// ── Weather cache ─────────────────────────────────────────────────────────────
+const WEATHER_CACHE_TTL_MS = 30 * 60 * 1000 // 30 minutes
+
+interface WeatherCache {
+  timestamp: number
+  data: {
+    current: CurrentWeather
+    hourly: HourlyForecast[]
+    upperWinds: UpperWindData[]
+    elevation: number
+    timezone: string
+    model: string
+  }
+}
+
+function weatherCacheKey(lat: number, lon: number) {
+  return `weather_${lat.toFixed(3)}_${lon.toFixed(3)}`
+}
+
+function readWeatherCache(lat: number, lon: number, ignoreExpiry = false): WeatherCache['data'] | null {
+  try {
+    const raw = localStorage.getItem(weatherCacheKey(lat, lon))
+    if (!raw) return null
+    const cache: WeatherCache = JSON.parse(raw)
+    if (!ignoreExpiry && Date.now() - cache.timestamp > WEATHER_CACHE_TTL_MS) return null
+    return cache.data
+  } catch {
+    return null
+  }
+}
+
+function writeWeatherCache(lat: number, lon: number, data: WeatherCache['data']): void {
+  try {
+    localStorage.setItem(weatherCacheKey(lat, lon), JSON.stringify({ timestamp: Date.now(), data }))
+  } catch { }
+}
+
 // Only use pressure levels reliably available in Open-Meteo hourly
 const PRESSURE_LEVELS = [
   { hPa: 925, altM: 760 },
@@ -110,11 +147,27 @@ export async function fetchAllWeatherData(lat: number, lon: number): Promise<{
   timezone: string
   model: string
 }> {
-  // Main weather is required; upper winds are optional (run in parallel)
-  const [d, upperWinds] = await Promise.all([
-    fetchMainWeather(lat, lon),
-    fetchUpperWindsSilent(lat, lon),
-  ])
+  // Return fresh cache if available
+  const fresh = readWeatherCache(lat, lon)
+  if (fresh) return fresh
+
+  let d: Awaited<ReturnType<typeof fetchMainWeather>>
+  let upperWinds: UpperWindData[]
+
+  try {
+    ;[d, upperWinds] = await Promise.all([
+      fetchMainWeather(lat, lon),
+      fetchUpperWindsSilent(lat, lon),
+    ])
+  } catch (err) {
+    // On rate limit, return stale cache if available; otherwise re-throw
+    const reason: string = (err as { response?: { data?: { reason?: string } } })?.response?.data?.reason ?? ''
+    if (reason.toLowerCase().includes('limit')) {
+      const stale = readWeatherCache(lat, lon, true)
+      if (stale) return stale
+    }
+    throw err
+  }
 
   const c = d.current
   const elevation: number = d.elevation ?? 0
@@ -153,7 +206,9 @@ export async function fetchAllWeatherData(lat: number, lon: number): Promise<{
     weatherCode: d.hourly.weather_code[i],
   }))
 
-  return { current, hourly, upperWinds, elevation, timezone: d.timezone ?? 'Asia/Taipei', model: d.model ?? 'best_match' }
+  const result = { current, hourly, upperWinds, elevation, timezone: d.timezone ?? 'Asia/Taipei', model: d.model ?? 'best_match' }
+  writeWeatherCache(lat, lon, result)
+  return result
 }
 
 export async function fetchElevation(lat: number, lon: number): Promise<number> {

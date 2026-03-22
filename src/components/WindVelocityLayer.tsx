@@ -3,7 +3,7 @@ import { useMap, useMapEvents } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet-velocity/dist/leaflet-velocity.css'
 import 'leaflet-velocity'
-import { fetchWindGrid, stepForZoom } from '../services/windGrid'
+import { fetchWindGrid, stepForZoom, WindRateLimitError } from '../services/windGrid'
 
 const VELOCITY_OPTIONS = {
   displayValues: false,
@@ -31,6 +31,7 @@ export default function WindVelocityLayer() {
   const lastFetchTimeRef = useRef<number>(0)
   const isFetchingRef = useRef(false)
   const [rateLimited, setRateLimited] = useState(false)
+  const [staleData, setStaleData] = useState(false)
 
   const fetchForZoom = useCallback(() => {
     if (isFetchingRef.current) return
@@ -64,9 +65,20 @@ export default function WindVelocityLayer() {
         layerRef.current = newLayer
       })
       .catch(err => {
-        const msg: string = err?.response?.data?.reason ?? err?.message ?? ''
-        if (msg.toLowerCase().includes('limit')) setRateLimited(true)
-        // Restore last fetch time so cooldown isn't consumed on failure
+        if (err instanceof WindRateLimitError) {
+          if (err.stale) {
+            // Show stale cached data with a subtle warning
+            const newLayer = L.velocityLayer({ ...VELOCITY_OPTIONS, data: err.stale })
+            newLayer.addTo(map)
+            const internal = newLayer as unknown as { _windy?: { stop: () => void } }
+            if (internal._windy?.stop) map.off('dragstart', internal._windy.stop)
+            if (layerRef.current) map.removeLayer(layerRef.current)
+            layerRef.current = newLayer
+            setStaleData(true)
+          } else {
+            setRateLimited(true)
+          }
+        }
         lastFetchTimeRef.current = 0
       })
       .finally(() => { isFetchingRef.current = false })
@@ -93,9 +105,20 @@ export default function WindVelocityLayer() {
     return (
       <div
         style={{ position: 'absolute', bottom: 40, left: '50%', transform: 'translateX(-50%)', zIndex: 1000 }}
+        className="px-3 py-1.5 bg-dark-800/90 border border-accent-red/40 rounded-full text-xs text-slate-300 whitespace-nowrap pointer-events-none"
+      >
+        ⚠ 風場 API 已達每日上限，明天重置後恢復
+      </div>
+    )
+  }
+
+  if (staleData) {
+    return (
+      <div
+        style={{ position: 'absolute', bottom: 40, left: '50%', transform: 'translateX(-50%)', zIndex: 1000 }}
         className="px-3 py-1.5 bg-dark-800/90 border border-accent-yellow/40 rounded-full text-xs text-slate-300 whitespace-nowrap pointer-events-none"
       >
-        ⚠ 風場資料請求達上限，顯示最後一次資料（每小時重置）
+        ⚠ 風場顯示快取資料（API 已達每日上限）
       </div>
     )
   }

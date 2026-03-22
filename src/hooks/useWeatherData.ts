@@ -61,8 +61,11 @@ export function useWeatherData() {
         setAltitudeWindProfile(profile)
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e)
+        const reason: string = (e as { response?: { data?: { reason?: string } } })?.response?.data?.reason ?? ''
         // Give a more specific error if possible
-        if (msg.includes('timeout') || msg.includes('ECONNABORTED')) {
+        if (reason.toLowerCase().includes('limit')) {
+          setError('天氣 已達請求上限，過一段時間後恢復')
+        } else if (msg.includes('timeout') || msg.includes('ECONNABORTED')) {
           setError('請求逾時，請確認網路連線後再試')
         } else if (msg.includes('Network') || msg.includes('network')) {
           setError('網路連線失敗，請確認網路後再試')
