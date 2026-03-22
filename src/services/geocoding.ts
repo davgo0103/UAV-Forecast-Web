@@ -13,9 +13,8 @@ export async function searchLocation(query: string): Promise<SearchResult[]> {
     params: {
       q: query,
       format: 'json',
-      limit: 5,
-      countrycodes: 'tw',
-      'accept-language': 'zh-TW,en',
+      limit: 8,
+      'accept-language': 'zh-TW,zh,en',
     },
   })
 
