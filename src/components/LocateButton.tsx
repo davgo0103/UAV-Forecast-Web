@@ -8,7 +8,7 @@ type GeoState = 'idle' | 'loading' | 'denied'
 
 export default function LocateButton() {
   const [geoState, setGeoState] = useState<GeoState>('idle')
-  const { setLocation, setTerrainElevation, setAglHeight, aglHeight } = useStore()
+  const { setLocation, setTerrainElevation } = useStore()
 
   async function handleLocate() {
     if (!navigator.geolocation) return
@@ -16,23 +16,16 @@ export default function LocateButton() {
 
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
-        const { latitude: lat, longitude: lon, altitude, altitudeAccuracy } = pos.coords
+        const { latitude: lat, longitude: lon } = pos.coords
 
         try {
           // Reverse geocode to get place name
           const loc = await reverseGeocode(lat, lon)
 
-          // Get terrain elevation from Open-Meteo
+          // Use Open-Meteo SRTM elevation — more reliable than GPS vertical accuracy
           const terrainElev = await fetchElevation(lat, lon)
           const roundedElev = Math.round(terrainElev)
           setTerrainElevation(roundedElev)
-
-          // If device provides GPS altitude with reasonable accuracy, derive AGL
-          if (altitude !== null && altitudeAccuracy !== null && altitudeAccuracy < 50) {
-            const gpsAgl = Math.max(10, Math.round(altitude - roundedElev))
-            setAglHeight(Math.min(gpsAgl, 500))
-          }
-          // Otherwise keep current AGL setting (don't override)
 
           setLocation({ lat, lon, name: loc.name, elevation: roundedElev })
         } catch {
@@ -53,9 +46,6 @@ export default function LocateButton() {
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     )
   }
-
-  // suppress unused warning — aglHeight is read only to satisfy exhaustive deps if needed
-  void aglHeight
 
   if (geoState === 'denied') {
     return (

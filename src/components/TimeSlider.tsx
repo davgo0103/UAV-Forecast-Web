@@ -3,6 +3,7 @@ import { Clock } from 'lucide-react'
 import dayjs from 'dayjs'
 import { useStore } from '../store/useStore'
 import { FlightStatus, HourlyForecast } from '../types'
+import { hapticTick, hapticBump } from '../utils/haptics'
 
 interface Props {
   maxHours: number
@@ -35,12 +36,17 @@ export default function TimeSlider({ maxHours, hourStatuses, forecastFromNow }: 
 
   function handleTouchStart(e: React.TouchEvent) {
     e.preventDefault()
-    setSelectedHourIndex(indexFromClientX(e.touches[0].clientX))
+    const idx = indexFromClientX(e.touches[0].clientX)
+    setSelectedHourIndex(idx)
+    hapticTick()
   }
 
   function handleTouchMove(e: React.TouchEvent) {
     e.preventDefault()
-    setSelectedHourIndex(indexFromClientX(e.touches[0].clientX))
+    const idx = indexFromClientX(e.touches[0].clientX)
+    if (idx === selectedHourIndex) return
+    setSelectedHourIndex(idx)
+    idx === 0 || idx === maxHours - 1 ? hapticBump() : hapticTick()
   }
 
   const selectedTime = forecastFromNow[selectedHourIndex]
@@ -97,7 +103,11 @@ export default function TimeSlider({ maxHours, hourStatuses, forecastFromNow }: 
           min={0}
           max={maxHours - 1}
           value={selectedHourIndex}
-          onChange={(e) => setSelectedHourIndex(parseInt(e.target.value))}
+          onChange={(e) => {
+            const idx = parseInt(e.target.value)
+            setSelectedHourIndex(idx)
+            idx === 0 || idx === maxHours - 1 ? hapticBump() : hapticTick()
+          }}
           className="absolute inset-0 w-full opacity-0 cursor-pointer touch-none"
           style={{ height: '100%' }}
         />

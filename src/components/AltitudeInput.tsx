@@ -1,5 +1,6 @@
 import { Mountain } from 'lucide-react'
 import { useStore } from '../store/useStore'
+import { hapticTick, hapticBump } from '../utils/haptics'
 
 export default function AltitudeInput() {
   const { aglHeight, setAglHeight, terrainElevation } = useStore()
@@ -24,7 +25,11 @@ export default function AltitudeInput() {
             max={1000}
             step={1}
             value={aglHeight}
-            onChange={(e) => setAglHeight(parseInt(e.target.value))}
+            onChange={(e) => {
+              const v = parseInt(e.target.value)
+              setAglHeight(v)
+              v === 1 || v === 1000 ? hapticBump() : hapticTick()
+            }}
             className="w-full h-1.5 rounded-full appearance-none bg-dark-500 accent-accent-blue cursor-pointer"
           />
           <div className="flex justify-between text-xs text-slate-500 mt-1">
