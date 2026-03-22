@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Layers, CloudRain, Cloud, Wind, PlaneTakeoff, Trees, Loader2 } from 'lucide-react'
 import { LayerState } from './MapOverlayLayers'
 
-export type BaseMapKey = 'dark' | 'satellite' | 'terrain'
+export type BaseMapKey = 'dark' | 'satellite' | 'terrain' | 'hiking'
 
 interface Props {
   baseMap: BaseMapKey
@@ -17,6 +17,7 @@ const BASE_MAP_OPTIONS: { key: BaseMapKey; label: string }[] = [
   { key: 'dark', label: '深色' },
   { key: 'satellite', label: '衛星' },
   { key: 'terrain', label: '地形' },
+  { key: 'hiking', label: '山岳' },
 ]
 
 const OVERLAY_OPTIONS: {
@@ -77,12 +78,12 @@ export default function MapLayerControl({
           {/* Base map selector */}
           <div>
             <div className="text-xs text-slate-400 mb-1.5 font-medium">底圖</div>
-            <div className="flex gap-1">
+            <div className="grid grid-cols-2 gap-1">
               {BASE_MAP_OPTIONS.map((opt) => (
                 <button
                   key={opt.key}
                   onClick={() => onBaseMapChange(opt.key)}
-                  className={`flex-1 text-xs py-1.5 rounded-lg transition-colors ${
+                  className={`text-xs py-1.5 rounded-lg transition-colors ${
                     baseMap === opt.key
                       ? 'bg-accent-blue text-white font-medium'
                       : 'bg-dark-600 text-slate-400 hover:bg-dark-500'
