@@ -35,6 +35,7 @@ function WindDirectionArrow({ degrees, variant = 'surface' }: { degrees: number;
   const isAlt = variant === 'altitude'
   return (
     <div className="relative w-10 h-10 flex items-center justify-center">
+      <span className="absolute top-0.5 left-1/2 -translate-x-1/2 text-[7px] font-bold text-slate-500 leading-none">N</span>
       <div
         className={`absolute w-4 h-4 ${isAlt ? 'text-accent-cyan' : 'text-accent-blue'}`}
         style={{ transform: `rotate(${degrees + 180}deg)` }}
