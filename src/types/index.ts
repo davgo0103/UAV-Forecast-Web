@@ -16,7 +16,7 @@ export interface DroneSpec {
   maxAltitude: number       // meters ASL
   minVisibility: number     // meters
   ipRating: string          // e.g. IP54
-  rainResistance: 'none' | 'light' | 'moderate'
+  rainResistance: 'none' | 'light' | 'moderate' | 'heavy'
   isCustom?: boolean
 }
 

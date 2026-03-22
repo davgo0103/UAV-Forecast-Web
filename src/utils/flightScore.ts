@@ -48,12 +48,17 @@ function getPrecipitationStatus(
     if (precipitation > 0) {
       return { status: 'caution', reason: '有降雨，雖有防潑水設計但仍需謹慎' }
     }
-  } else {
+  } else if (drone.rainResistance === 'moderate') {
     if (precipitation > 7.5) {
       return { status: 'danger', reason: '大雨，超過機體防水等級' }
     }
     if (precipitation > 2.5) {
       return { status: 'caution', reason: '中雨，謹慎飛行' }
+    }
+  } else {
+    // heavy (IP67+)
+    if (precipitation > 2.5) {
+      return { status: 'caution', reason: '中大雨，建議謹慎飛行' }
     }
   }
   return { status: 'good' }
