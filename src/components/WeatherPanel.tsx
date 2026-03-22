@@ -36,7 +36,7 @@ function WindDirectionArrow({ degrees }: { degrees: number }) {
     <div className="relative w-10 h-10 flex items-center justify-center">
       <div
         className="absolute w-4 h-4 text-accent-blue"
-        style={{ transform: `rotate(${degrees}deg)` }}
+        style={{ transform: `rotate(${degrees + 180}deg)` }}
       >
         <ArrowUp className="w-4 h-4" />
       </div>

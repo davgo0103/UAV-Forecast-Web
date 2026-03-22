@@ -81,8 +81,8 @@ export default function App() {
   // Compare using location's timezone so non-Taiwan locations are correct
   const nowForecastIndex = useMemo(() => {
     if (hourlyForecast.length === 0) return 0
-    // "Now" expressed as a naive local time string in the location's timezone
-    const nowLocal = dayjs().tz(locationTimezone).format('YYYY-MM-DDTHH:mm')
+    // Truncate to the current hour so 09:19 maps to the 09:00 slot, not 10:00
+    const nowLocal = dayjs().tz(locationTimezone).startOf('hour').format('YYYY-MM-DDTHH:mm')
     const idx = hourlyForecast.findIndex((f) => f.time >= nowLocal)
     return idx === -1 ? 0 : idx
   }, [hourlyForecast, locationTimezone])
