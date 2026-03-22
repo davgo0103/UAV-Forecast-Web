@@ -49,22 +49,24 @@ export async function fetchWindGrid(bounds: WindGridBounds, zoom: number): Promi
   const west = Math.max(-180, Math.floor(bounds.west / step) * step)
   const east = Math.min(180, Math.ceil(bounds.east / step) * step)
 
-  // Scale up step until point count is manageable
-  let nx = Math.round((east - west) / step) + 1
-  let ny = Math.round((north - south) / step) + 1
+  // Use Math.floor so the last grid point never overshoots the bound
+  let nx = Math.floor((east - west) / step) + 1
+  let ny = Math.floor((north - south) / step) + 1
   while (nx * ny > 400 && step < 20) {
     step *= 2
-    nx = Math.round((east - west) / step) + 1
-    ny = Math.round((north - south) / step) + 1
+    nx = Math.floor((east - west) / step) + 1
+    ny = Math.floor((north - south) / step) + 1
   }
 
   // Build grid points: north→south rows, west→east columns
   const lats: number[] = []
   const lons: number[] = []
   for (let row = 0; row < ny; row++) {
-    const lat = round2(north - row * step, step)
+    const lat = Math.max(-85, Math.min(85, round2(north - row * step, step)))
     for (let col = 0; col < nx; col++) {
-      lons.push(round2(west + col * step, step))
+      // Clamp each longitude to [-180, 180] to guard against floating-point drift
+      const lon = Math.max(-180, Math.min(180, round2(west + col * step, step)))
+      lons.push(lon)
       lats.push(lat)
     }
   }

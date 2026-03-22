@@ -17,51 +17,37 @@ const VELOCITY_OPTIONS = {
   opacity: 0.85,
 }
 
-// Cooldown: don't re-fetch the same zoom level within 30 minutes
+// Re-fetch on zoom only if resolution tier changed AND cooldown passed
 const COOLDOWN_MS = 30 * 60 * 1000
+
+// Global bounds covering the whole world (leaflet-velocity handles out-of-bound areas gracefully)
+const GLOBAL_BOUNDS = { north: 85, south: -85, west: -180, east: 180 }
 
 export default function WindVelocityLayer() {
   const map = useMap()
   const layerRef = useRef<L.Layer | null>(null)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const fetchedBoundsRef = useRef<L.LatLngBounds | null>(null)
-  const lastFetchZoomRef = useRef<number | null>(null)
+  const lastStepRef = useRef<number | null>(null)
   const lastFetchTimeRef = useRef<number>(0)
   const isFetchingRef = useRef(false)
   const [rateLimited, setRateLimited] = useState(false)
 
-  const fetchForView = useCallback((forceZoom?: number) => {
+  const fetchForZoom = useCallback(() => {
     if (isFetchingRef.current) return
 
-    const bounds = map.getBounds()
-    const zoom = forceZoom ?? map.getZoom()
+    const zoom = map.getZoom()
+    const step = stepForZoom(zoom)
     const now = Date.now()
 
-    // Cooldown: skip if same zoom level was fetched within COOLDOWN_MS
-    const sameZoomStep = stepForZoom(zoom) === stepForZoom(lastFetchZoomRef.current ?? -1)
-    if (sameZoomStep && now - lastFetchTimeRef.current < COOLDOWN_MS && layerRef.current) return
-
-    // Buffer: 4x viewport so pan rarely triggers a new fetch
-    const latPad = (bounds.getNorth() - bounds.getSouth()) * 2
-    const lonPad = (bounds.getEast() - bounds.getWest()) * 2
-
-    const buffered = {
-      north: Math.min(85, bounds.getNorth() + latPad),
-      south: Math.max(-85, bounds.getSouth() - latPad),
-      west: Math.max(-180, bounds.getWest() - lonPad),
-      east: Math.min(180, bounds.getEast() + lonPad),
-    }
-
-    fetchedBoundsRef.current = L.latLngBounds(
-      [buffered.south, buffered.west],
-      [buffered.north, buffered.east],
-    )
+    // Skip if same resolution tier and still within cooldown
+    if (step === lastStepRef.current && now - lastFetchTimeRef.current < COOLDOWN_MS && layerRef.current) return
 
     isFetchingRef.current = true
-    lastFetchZoomRef.current = zoom
+    lastStepRef.current = step
     lastFetchTimeRef.current = now
 
-    fetchWindGrid(buffered, zoom)
+    // Always fetch global bounds — no gaps when panning anywhere
+    fetchWindGrid(GLOBAL_BOUNDS, zoom)
       .then(data => {
         if (!data.length) return
         setRateLimited(false)
@@ -73,34 +59,33 @@ export default function WindVelocityLayer() {
         const internal = newLayer as unknown as { _windy?: { stop: () => void } }
         if (internal._windy?.stop) map.off('dragstart', internal._windy.stop)
 
+        // Add new layer before removing old — no visual gap
         if (layerRef.current) map.removeLayer(layerRef.current)
         layerRef.current = newLayer
       })
       .catch(err => {
         const msg: string = err?.response?.data?.reason ?? err?.message ?? ''
         if (msg.toLowerCase().includes('limit')) setRateLimited(true)
+        // Restore last fetch time so cooldown isn't consumed on failure
+        lastFetchTimeRef.current = 0
       })
       .finally(() => { isFetchingRef.current = false })
   }, [map])
 
   // Initial fetch on mount
   useEffect(() => {
-    fetchForView()
+    fetchForZoom()
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current)
       if (layerRef.current) { map.removeLayer(layerRef.current); layerRef.current = null }
     }
-  }, [fetchForView, map])
+  }, [fetchForZoom, map])
 
+  // Only refetch when zoom resolution tier changes
   useMapEvents({
-    moveend: () => {
-      if (fetchedBoundsRef.current?.contains(map.getBounds())) return
-      if (timerRef.current) clearTimeout(timerRef.current)
-      timerRef.current = setTimeout(() => fetchForView(), 600)
-    },
     zoomend: () => {
       if (timerRef.current) clearTimeout(timerRef.current)
-      timerRef.current = setTimeout(() => fetchForView(), 600)
+      timerRef.current = setTimeout(fetchForZoom, 400)
     },
   })
 
