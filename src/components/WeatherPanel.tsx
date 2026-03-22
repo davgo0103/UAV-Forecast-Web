@@ -31,16 +31,17 @@ function StatCard({ icon, label, value, sub }: {
   )
 }
 
-function WindDirectionArrow({ degrees }: { degrees: number }) {
+function WindDirectionArrow({ degrees, variant = 'surface' }: { degrees: number; variant?: 'surface' | 'altitude' }) {
+  const isAlt = variant === 'altitude'
   return (
     <div className="relative w-10 h-10 flex items-center justify-center">
       <div
-        className="absolute w-4 h-4 text-accent-blue"
+        className={`absolute w-4 h-4 ${isAlt ? 'text-accent-cyan' : 'text-accent-blue'}`}
         style={{ transform: `rotate(${degrees + 180}deg)` }}
       >
         <ArrowUp className="w-4 h-4" />
       </div>
-      <div className="w-8 h-8 rounded-full border border-dark-500" />
+      <div className={`w-8 h-8 rounded-full border ${isAlt ? 'border-accent-cyan/50 border-dashed' : 'border-dark-500'}`} />
     </div>
   )
 }
@@ -54,6 +55,7 @@ export default function WeatherPanel({ weather, altitudeProfile, effectiveAltitu
   const altWind = altitudeProfile?.atFlightAltitude
   // For forecast mode, use the scaled altitude wind passed directly
   const displayAltWindSpeed = effectiveAltitudeWind ?? altWind?.windSpeed
+  const displayAltWindDir = altWind?.windDirection
   const displayAltWindAlt = altitudeProfile?.atFlightAltitude.altitude
   const altWindBeaufort = displayAltWindSpeed != null ? windSpeedToBeaufort(displayAltWindSpeed) : null
 
@@ -107,29 +109,41 @@ export default function WeatherPanel({ weather, altitudeProfile, effectiveAltitu
             <div className="text-xs text-accent-cyan mb-2">
               飛行高度風速{displayAltWindAlt ? `（${displayAltWindAlt}m ASL）` : '（預估）'}
             </div>
-            <div className="flex items-end justify-between">
-              <div className="text-3xl font-black text-white">
-                {displayAltWindSpeed}
-                <span className="text-base font-normal text-slate-400 ml-1">m/s</span>
+            <div className="flex items-center justify-between">
+              {/* Left: arrow + speed */}
+              <div className="flex items-center gap-3">
+                {displayAltWindDir != null && (
+                  <div className="flex flex-col items-center gap-0.5">
+                    <WindDirectionArrow degrees={displayAltWindDir} variant="altitude" />
+                    <span className="text-xs text-accent-cyan font-mono">{displayAltWindDir}°</span>
+                  </div>
+                )}
+                <div>
+                  <div className="text-3xl font-black text-white">
+                    {displayAltWindSpeed}
+                    <span className="text-base font-normal text-slate-400 ml-1">m/s</span>
+                  </div>
+                  <div className="text-sm text-slate-400">{(displayAltWindSpeed * 3.6).toFixed(1)} km/h</div>
+                  {altWindBeaufort !== null && (
+                    <div className="text-xs text-slate-500">{BEAUFORT_LABELS[altWindBeaufort]}（{altWindBeaufort} 級）</div>
+                  )}
+                </div>
               </div>
-              <div className="text-right">
-                <div className="text-sm text-slate-400">{(displayAltWindSpeed * 3.6).toFixed(1)} km/h</div>
-                {altWindBeaufort !== null && (
-                  <div className="text-xs text-slate-500">{BEAUFORT_LABELS[altWindBeaufort]}（{altWindBeaufort} 級）</div>
+              {/* Right: temperature + diff */}
+              <div className="text-right space-y-1">
+                {altitudeTemperature != null && (
+                  <div>
+                    <div className="text-xs text-slate-400">飛行高度溫度</div>
+                    <div className="text-lg font-semibold text-white font-mono">{altitudeTemperature}°C</div>
+                  </div>
+                )}
+                {displayAltWindSpeed > weather.windSpeed && (
+                  <div className="text-xs text-accent-red whitespace-nowrap">
+                    ↑ 比地面高 {(displayAltWindSpeed - weather.windSpeed).toFixed(1)} m/s
+                  </div>
                 )}
               </div>
             </div>
-            {altitudeTemperature != null && (
-              <div className="mt-2 pt-2 border-t border-accent-blue/20 flex items-center justify-between text-xs">
-                <span className="text-slate-400">飛行高度溫度</span>
-                <span className="text-white font-mono">{altitudeTemperature}°C</span>
-              </div>
-            )}
-            {displayAltWindSpeed > weather.windSpeed && (
-              <div className="mt-2 text-xs text-accent-red">
-                ↑ 比地面高 {(displayAltWindSpeed - weather.windSpeed).toFixed(1)} m/s
-              </div>
-            )}
           </div>
         )}
       </div>

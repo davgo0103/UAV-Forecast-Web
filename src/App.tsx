@@ -198,7 +198,6 @@ export default function App() {
             <SearchBar />
             <LocateButton />
             <DroneSelector />
-            <AltitudeInput />
           </div>
 
           {/* Location info */}
@@ -243,6 +242,8 @@ export default function App() {
                 isForecast={selectedHourIndex > 0}
               />
             )}
+
+            {displayWeather && <AltitudeInput />}
 
             {displayWeather && (
               <WeatherPanel
