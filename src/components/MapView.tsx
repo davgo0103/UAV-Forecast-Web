@@ -199,6 +199,10 @@ export default function MapView() {
         zoom={8}
         className="w-full h-full"
         style={{ background: '#0f1629' }}
+        minZoom={3}
+        maxZoom={18}
+        maxBounds={[[-90, -180], [90, 180]]}
+        maxBoundsViscosity={1.0}
       >
         {/* Base tile layer — key forces remount on switch */}
         <TileLayer
@@ -206,6 +210,7 @@ export default function MapView() {
           url={BASE_MAPS[baseMap].url}
           attribution={BASE_MAPS[baseMap].attribution}
           maxNativeZoom={baseMap === 'hiking' ? 17 : 19}
+          noWrap
         />
 
         {/* Only pass owmKey when confirmed valid to prevent 401 tile errors */}

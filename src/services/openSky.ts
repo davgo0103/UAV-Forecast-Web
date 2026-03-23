@@ -14,7 +14,7 @@ export interface Aircraft {
 }
 
 // ── OAuth2 token cache ─────────────────────────────────────────────────────────
-const TOKEN_URL = 'https://auth.opensky-network.org/realms/opensky-network/protocol/openid-connect/token'
+const TOKEN_URL = '/opensky-auth/auth/realms/opensky-network/protocol/openid-connect/token'
 
 let cachedToken: string | null = null
 let tokenExpiresAt = 0
@@ -84,15 +84,20 @@ function parseStates(states: unknown[][]): Aircraft[] {
     .filter((a) => a.longitude != null && a.latitude != null && !a.onGround)
 }
 
-async function doFetch(bounds: { north: number; south: number; west: number; east: number }, token?: string): Promise<Aircraft[]> {
+async function doFetch(
+  bounds: { north: number; south: number; west: number; east: number },
+  token?: string
+): Promise<{ data: Aircraft[]; creditsRemaining: number | null }> {
   const headers = token ? { Authorization: `Bearer ${token}` } : {}
   const res = await axios.get('https://opensky-network.org/api/states/all', {
     timeout: 10000,
     headers,
     params: { lamin: bounds.south, lomin: bounds.west, lamax: bounds.north, lomax: bounds.east },
   })
-  if (!res.data?.states) return []
-  return parseStates(res.data.states as unknown[][])
+  const raw = res.headers['x-rate-limit-remaining']
+  const creditsRemaining = raw != null ? parseInt(raw, 10) : null
+  if (!res.data?.states) return { data: [], creditsRemaining }
+  return { data: parseStates(res.data.states as unknown[][]), creditsRemaining }
 }
 
 export async function fetchAircraft(bounds: {
@@ -100,26 +105,23 @@ export async function fetchAircraft(bounds: {
   south: number
   west: number
   east: number
-}): Promise<Aircraft[]> {
+}): Promise<{ aircraft: Aircraft[]; creditsRemaining: number | null }> {
   // Return cache if fresh and bounds are covered
   if (aircraftCache && isCacheValid(aircraftCache, bounds)) {
-    return aircraftCache.data
+    return { aircraft: aircraftCache.data, creditsRemaining: null }
   }
 
-  let data: Aircraft[]
+  let result: { data: Aircraft[]; creditsRemaining: number | null }
   try {
-    // Try anonymous first
-    data = await doFetch(bounds)
+    result = await doFetch(bounds)
   } catch (err) {
     const status = (err as { response?: { status?: number } })?.response?.status
     if (status !== 429) throw err
-
-    // Anonymous quota exhausted — fall back to authenticated account
     const token = await getAccessToken()
     if (!token) throw err
-    data = await doFetch(bounds, token)
+    result = await doFetch(bounds, token)
   }
 
-  aircraftCache = { timestamp: Date.now(), bounds, data }
-  return data
+  aircraftCache = { timestamp: Date.now(), bounds, data: result.data }
+  return { aircraft: result.data, creditsRemaining: result.creditsRemaining }
 }

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useStore } from '../store/useStore'
 import { Layers, CloudRain, Cloud, Wind, PlaneTakeoff, Trees, Loader2, Footprints, Plane } from 'lucide-react'
 import { LayerState } from './MapOverlayLayers'
 
@@ -60,6 +61,7 @@ export default function MapLayerControl({
   owmValid,
 }: Props) {
   const [open, setOpen] = useState(false)
+  const openskyCredits = useStore((s) => s.openskyCredits)
 
   return (
     <div className="relative">
@@ -155,6 +157,12 @@ export default function MapLayerControl({
             <span className="text-xs text-slate-600">OWM</span>
             <OwmStatusBadge owmValid={owmValid} />
           </div>
+          {openskyCredits != null && layers.aircraft && (
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-slate-600">OpenSky</span>
+              <span className="text-xs text-slate-500">{openskyCredits} credits</span>
+            </div>
+          )}
 
           <p className="text-xs text-slate-600">空域資料僅供參考</p>
         </div>

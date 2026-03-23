@@ -1,2 +1,3 @@
 /caa-gis/*       https://dronegis.caa.gov.tw/:splat       200
 /opentopodata/*  https://api.opentopodata.org/:splat      200
+/opensky-auth/*  https://auth.opensky-network.org/:splat  200

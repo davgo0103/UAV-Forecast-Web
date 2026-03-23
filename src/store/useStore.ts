@@ -47,6 +47,10 @@ interface AppState {
   dataWarnings: string[]
   setDataWarnings: (w: string[]) => void
 
+  // OpenSky remaining credits
+  openskyCredits: number | null
+  setOpenskyCredits: (v: number | null) => void
+
   // Loading states
   isLoadingWeather: boolean
   isLoadingKp: boolean
@@ -101,6 +105,9 @@ export const useStore = create<AppState>((set) => ({
 
   dataWarnings: [],
   setDataWarnings: (w) => set({ dataWarnings: w }),
+
+  openskyCredits: null,
+  setOpenskyCredits: (v) => set({ openskyCredits: v }),
 
   isLoadingWeather: false,
   isLoadingKp: false,

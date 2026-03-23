@@ -15,6 +15,11 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/opentopodata/, ''),
       },
+      '/opensky-auth': {
+        target: 'https://auth.opensky-network.org',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/opensky-auth/, ''),
+      },
     },
   },
   preview: {
@@ -28,6 +33,11 @@ export default defineConfig({
         target: 'https://api.opentopodata.org',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/opentopodata/, ''),
+      },
+      '/opensky-auth': {
+        target: 'https://auth.opensky-network.org',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/opensky-auth/, ''),
       },
     },
   },
