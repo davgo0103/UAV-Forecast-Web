@@ -52,7 +52,8 @@ export default function SearchBar() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="搜尋地點（如：合歡山、信義區）"
-          className="flex-1 bg-transparent text-sm text-white placeholder-slate-500 outline-none min-w-0"
+          className="flex-1 bg-transparent text-white placeholder-slate-500 outline-none min-w-0"
+          style={{ fontSize: '16px' }}
         />
         {query && (
           <button
