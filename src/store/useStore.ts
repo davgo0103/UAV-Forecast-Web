@@ -51,6 +51,10 @@ interface AppState {
   openskyCredits: number | null
   setOpenskyCredits: (v: number | null) => void
 
+  // Whether OpenSky is using OAuth2 token (fallback when anonymous quota exhausted)
+  openskyUsingToken: boolean
+  setOpenskyUsingToken: (v: boolean) => void
+
   // Loading states
   isLoadingWeather: boolean
   isLoadingKp: boolean
@@ -108,6 +112,9 @@ export const useStore = create<AppState>((set) => ({
 
   openskyCredits: null,
   setOpenskyCredits: (v) => set({ openskyCredits: v }),
+
+  openskyUsingToken: false,
+  setOpenskyUsingToken: (v) => set({ openskyUsingToken: v }),
 
   isLoadingWeather: false,
   isLoadingKp: false,

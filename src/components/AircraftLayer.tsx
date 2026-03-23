@@ -129,6 +129,7 @@ export default function AircraftLayer() {
   const [zoom, setZoom] = useState(map.getZoom())
   const [rateLimited, setRateLimited] = useState(false)
   const setOpenskyCredits = useStore((s) => s.setOpenskyCredits)
+  const setOpenskyUsingToken = useStore((s) => s.setOpenskyUsingToken)
 
   const clearCluster = useCallback(() => {
     if (clusterRef.current) {
@@ -143,12 +144,13 @@ export default function AircraftLayer() {
 
     const b = map.getBounds()
     try {
-      const { aircraft, creditsRemaining: cr } = await fetchAircraft({
+      const { aircraft, creditsRemaining: cr, usingToken } = await fetchAircraft({
         north: b.getNorth(), south: b.getSouth(),
         west: b.getWest(), east: b.getEast(),
       })
       setRateLimited(false)
       if (cr != null) setOpenskyCredits(cr)
+      setOpenskyUsingToken(usingToken)
       clearCluster()
 
       const useCluster = currentZoom < CLUSTER_ZOOM

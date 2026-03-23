@@ -105,13 +105,14 @@ export async function fetchAircraft(bounds: {
   south: number
   west: number
   east: number
-}): Promise<{ aircraft: Aircraft[]; creditsRemaining: number | null }> {
+}): Promise<{ aircraft: Aircraft[]; creditsRemaining: number | null; usingToken: boolean }> {
   // Return cache if fresh and bounds are covered
   if (aircraftCache && isCacheValid(aircraftCache, bounds)) {
-    return { aircraft: aircraftCache.data, creditsRemaining: null }
+    return { aircraft: aircraftCache.data, creditsRemaining: null, usingToken: cachedToken != null && Date.now() < tokenExpiresAt - 30_000 }
   }
 
   let result: { data: Aircraft[]; creditsRemaining: number | null }
+  let usingToken = false
   try {
     result = await doFetch(bounds)
   } catch (err) {
@@ -120,8 +121,9 @@ export async function fetchAircraft(bounds: {
     const token = await getAccessToken()
     if (!token) throw err
     result = await doFetch(bounds, token)
+    usingToken = true
   }
 
   aircraftCache = { timestamp: Date.now(), bounds, data: result.data }
-  return { aircraft: result.data, creditsRemaining: result.creditsRemaining }
+  return { aircraft: result.data, creditsRemaining: result.creditsRemaining, usingToken }
 }

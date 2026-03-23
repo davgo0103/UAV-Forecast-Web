@@ -62,6 +62,7 @@ export default function MapLayerControl({
 }: Props) {
   const [open, setOpen] = useState(false)
   const openskyCredits = useStore((s) => s.openskyCredits)
+  const openskyUsingToken = useStore((s) => s.openskyUsingToken)
 
   return (
     <div className="relative">
@@ -157,10 +158,12 @@ export default function MapLayerControl({
             <span className="text-xs text-slate-600">OWM</span>
             <OwmStatusBadge owmValid={owmValid} />
           </div>
-          {openskyCredits != null && layers.aircraft && (
+          {layers.aircraft && openskyUsingToken && (
             <div className="flex items-center justify-between">
               <span className="text-xs text-slate-600">OpenSky</span>
-              <span className="text-xs text-slate-500">{openskyCredits} credits</span>
+              <span className="text-xs text-slate-500">
+                {openskyCredits != null ? `${openskyCredits} credits` : '帳號授權中'}
+              </span>
             </div>
           )}
 
