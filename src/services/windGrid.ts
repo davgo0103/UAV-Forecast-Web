@@ -12,13 +12,20 @@ interface WindGridCache {
   data: VelocityData[]
 }
 
-function cacheKey(step: number) {
-  return `windgrid_${step}`
+// Cache key includes coarse 20° region so panning to a different area doesn't
+// return stale data from a previous location.
+function cacheKey(step: number, bounds: WindGridBounds): string {
+  const block = 20
+  const n = Math.ceil(bounds.north / block) * block
+  const s = Math.floor(bounds.south / block) * block
+  const w = Math.floor(bounds.west / block) * block
+  const e = Math.ceil(bounds.east / block) * block
+  return `windgrid_${step}_${n}_${s}_${w}_${e}`
 }
 
-function readCache(step: number, ignoreExpiry = false): VelocityData[] | null {
+function readCache(step: number, bounds: WindGridBounds, ignoreExpiry = false): VelocityData[] | null {
   try {
-    const raw = localStorage.getItem(cacheKey(step))
+    const raw = localStorage.getItem(cacheKey(step, bounds))
     if (!raw) return null
     const cache: WindGridCache = JSON.parse(raw)
     if (!ignoreExpiry && Date.now() - cache.timestamp > CACHE_TTL_MS) return null
@@ -28,12 +35,12 @@ function readCache(step: number, ignoreExpiry = false): VelocityData[] | null {
   }
 }
 
-function writeCache(step: number, data: VelocityData[]): void {
+function writeCache(step: number, bounds: WindGridBounds, data: VelocityData[]): void {
   try {
     const cache: WindGridCache = { timestamp: Date.now(), data }
-    localStorage.setItem(cacheKey(step), JSON.stringify(cache))
+    localStorage.setItem(cacheKey(step, bounds), JSON.stringify(cache))
   } catch {
-    // localStorage 滿了或不可用，靜默忽略
+    // localStorage full or unavailable — silently ignore
   }
 }
 
@@ -69,27 +76,29 @@ export function stepForZoom(zoom: number): number {
   if (zoom <= 4) return 5
   if (zoom <= 6) return 2
   if (zoom <= 8) return 1
-  return 0.5
+  if (zoom <= 10) return 0.5
+  if (zoom <= 12) return 0.25
+  return 0.1
 }
 
 export async function fetchWindGrid(bounds: WindGridBounds, zoom: number): Promise<VelocityData[]> {
   let step = stepForZoom(zoom)
 
-  // Return cached data if still fresh (avoids hitting daily API limit on page refresh)
-  const cached = readCache(step)
+  // Return cached data if still fresh
+  const cached = readCache(step, bounds)
   if (cached) return cached
 
   // Snap bounds outward to grid
   const north = Math.min(85, Math.ceil(bounds.north / step) * step)
   const south = Math.max(-85, Math.floor(bounds.south / step) * step)
-  // Clamp longitude to [-180, 180]
   const west = Math.max(-180, Math.floor(bounds.west / step) * step)
   const east = Math.min(180, Math.ceil(bounds.east / step) * step)
 
-  // Use Math.floor so the last grid point never overshoots the bound
   let nx = Math.floor((east - west) / step) + 1
   let ny = Math.floor((north - south) / step) + 1
-  while (nx * ny > 400 && step < 20) {
+  // Cap at 800 points — visible-area fetches are much smaller than global,
+  // so this limit is rarely hit for normal zoom levels.
+  while (nx * ny > 800 && step < 20) {
     step *= 2
     nx = Math.floor((east - west) / step) + 1
     ny = Math.floor((north - south) / step) + 1
@@ -101,7 +110,6 @@ export async function fetchWindGrid(bounds: WindGridBounds, zoom: number): Promi
   for (let row = 0; row < ny; row++) {
     const lat = Math.max(-85, Math.min(85, round2(north - row * step, step)))
     for (let col = 0; col < nx; col++) {
-      // Clamp each longitude to [-180, 180] to guard against floating-point drift
       const lon = Math.max(-180, Math.min(180, round2(west + col * step, step)))
       lons.push(lon)
       lats.push(lat)
@@ -117,12 +125,14 @@ export async function fetchWindGrid(bounds: WindGridBounds, zoom: number): Promi
         hourly: 'wind_u_component_10m,wind_v_component_10m',
         forecast_days: 1,
         wind_speed_unit: 'ms',
+        models: 'best_match',
       },
     })
   } catch (err) {
     const reason: string = (err as { response?: { data?: { reason?: string } } })?.response?.data?.reason ?? ''
     const isRateLimit = reason.toLowerCase().includes('limit')
-    throw new WindRateLimitError(isRateLimit ? readCache(step, true) : null)
+    const isHourly = reason.toLowerCase().includes('hour')
+    throw new WindRateLimitError(isRateLimit ? readCache(step, bounds, true) : null, isHourly ? 'hourly' : 'daily')
   }
 
   const nowStr = dayjs.utc().format('YYYY-MM-DDTHH:00')
@@ -157,14 +167,16 @@ export async function fetchWindGrid(bounds: WindGridBounds, zoom: number): Promi
     { header: { ...header, parameterCategory: 2, parameterNumber: 3 }, data: vData },
   ]
 
-  writeCache(step, result)
+  writeCache(step, bounds, result)
   return result
 }
 
 export class WindRateLimitError extends Error {
   readonly stale: VelocityData[] | null
-  constructor(stale: VelocityData[] | null) {
+  readonly limitType: 'hourly' | 'daily'
+  constructor(stale: VelocityData[] | null, limitType: 'hourly' | 'daily' = 'daily') {
     super('rate_limited')
     this.stale = stale
+    this.limitType = limitType
   }
 }

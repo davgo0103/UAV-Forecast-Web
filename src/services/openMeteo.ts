@@ -163,9 +163,13 @@ export async function fetchAllWeatherData(lat: number, lon: number): Promise<{
       fetchUpperWindsSilent(lat, lon),
     ])
   } catch (err) {
-    // On rate limit, return stale cache if available; otherwise re-throw
     const reason: string = (err as { response?: { data?: { reason?: string } } })?.response?.data?.reason ?? ''
-    if (reason.toLowerCase().includes('limit')) {
+    const errMsg: string = (err instanceof Error ? err.message : String(err)).toLowerCase()
+    const isRateLimit = reason.toLowerCase().includes('limit')
+    const isNetworkError = !('response' in (err as object)) || errMsg.includes('network') || errMsg.includes('timeout')
+
+    // Fallback on rate limit OR network-level failures (server unreachable, mobile network issues)
+    if (isRateLimit || isNetworkError) {
       const stale = readWeatherCache(lat, lon, true)
       if (stale) return stale
       // No stale cache — try WeatherAPI, then MET Norway
