@@ -75,7 +75,8 @@ export function useWeatherData() {
         const reason: string = (e as { response?: { data?: { reason?: string } } })?.response?.data?.reason ?? ''
         // Give a more specific error if possible
         if (reason.toLowerCase().includes('limit')) {
-          const resetHint = reason.toLowerCase().includes('hour') ? '請一小時後再試' : '請明天再試'
+          const r = reason.toLowerCase()
+          const resetHint = r.includes('minute') ? '請一分鐘後再試' : r.includes('hour') ? '請一小時後再試' : '請明天再試'
           setError(`天氣 API 已達請求上限，${resetHint}`)
         } else if (msg.includes('timeout') || msg.includes('ECONNABORTED')) {
           setError('請求逾時，請確認網路連線後再試')

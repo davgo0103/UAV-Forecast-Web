@@ -102,10 +102,12 @@ export default function WindVelocityLayer() {
             if (internal._windy?.stop) map.off('dragstart', internal._windy.stop)
             if (layerRef.current) map.removeLayer(layerRef.current)
             layerRef.current = newLayer
-            const hint = err.limitType === 'hourly' ? '請一小時後再試' : '明天重置後恢復'
+            const hint = err.limitType === 'minutely' ? '請一分鐘後再試' : err.limitType === 'hourly' ? '請一小時後再試' : '明天重置後恢復'
             setStaleMsg(`⚠ 風場顯示快取資料（API 已達上限，${hint}）`)
           } else {
-            const msg = err.limitType === 'hourly'
+            const msg = err.limitType === 'minutely'
+              ? '⚠ 風場 API 已達每分鐘上限，請稍後再試'
+              : err.limitType === 'hourly'
               ? '⚠ 風場 API 已達每小時上限，請一小時後再試'
               : '⚠ 風場 API 已達每日上限，明天重置後恢復'
             setRateLimitMsg(msg)

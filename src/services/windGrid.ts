@@ -131,8 +131,9 @@ export async function fetchWindGrid(bounds: WindGridBounds, zoom: number): Promi
   } catch (err) {
     const reason: string = (err as { response?: { data?: { reason?: string } } })?.response?.data?.reason ?? ''
     const isRateLimit = reason.toLowerCase().includes('limit')
-    const isHourly = reason.toLowerCase().includes('hour')
-    throw new WindRateLimitError(isRateLimit ? readCache(step, bounds, true) : null, isHourly ? 'hourly' : 'daily')
+    const r = reason.toLowerCase()
+    const limitType = r.includes('minute') ? 'minutely' : r.includes('hour') ? 'hourly' : 'daily'
+    throw new WindRateLimitError(isRateLimit ? readCache(step, bounds, true) : null, limitType)
   }
 
   const nowStr = dayjs.utc().format('YYYY-MM-DDTHH:00')
@@ -173,8 +174,8 @@ export async function fetchWindGrid(bounds: WindGridBounds, zoom: number): Promi
 
 export class WindRateLimitError extends Error {
   readonly stale: VelocityData[] | null
-  readonly limitType: 'hourly' | 'daily'
-  constructor(stale: VelocityData[] | null, limitType: 'hourly' | 'daily' = 'daily') {
+  readonly limitType: 'minutely' | 'hourly' | 'daily'
+  constructor(stale: VelocityData[] | null, limitType: 'minutely' | 'hourly' | 'daily' = 'daily') {
     super('rate_limited')
     this.stale = stale
     this.limitType = limitType
