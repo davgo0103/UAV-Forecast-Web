@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet'
 import { LatLng } from 'leaflet'
-import type { FeatureCollection } from 'geojson'
+import type { FeatureCollection, Feature, Polygon, MultiPolygon } from 'geojson'
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
 import { X, Loader2, RefreshCw, AlertTriangle } from 'lucide-react'
@@ -40,6 +40,73 @@ const BASE_MAPS: Record<BaseMapKey, { url: string; attribution: string }> = {
     attribution:
       'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)',
   },
+}
+
+// Ray-casting point-in-polygon for a single ring
+function pointInRing(pt: [number, number], ring: number[][]): boolean {
+  const [px, py] = pt
+  let inside = false
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [xi, yi] = ring[i]
+    const [xj, yj] = ring[j]
+    if (yi > py !== yj > py && px < ((xj - xi) * (py - yi)) / (yj - yi) + xi) {
+      inside = !inside
+    }
+  }
+  return inside
+}
+
+function pointInFeature(lat: number, lon: number, feature: Feature): boolean {
+  const pt: [number, number] = [lon, lat]
+  const geom = feature.geometry
+  if (!geom) return false
+  if (geom.type === 'Polygon') {
+    return pointInRing(pt, (geom as Polygon).coordinates[0])
+  }
+  if (geom.type === 'MultiPolygon') {
+    return (geom as MultiPolygon).coordinates.some(poly => pointInRing(pt, poly[0]))
+  }
+  return false
+}
+
+interface RightClickHandlerProps {
+  airspaceData: FeatureCollection | null
+  parksData: FeatureCollection | null
+  onSelect: (info: AirspaceInfo) => void
+}
+
+function RightClickHandler({ airspaceData, parksData, onSelect }: RightClickHandlerProps) {
+  useMapEvents({
+    contextmenu(e) {
+      const { lat } = e.latlng
+      const lon = ((e.latlng.lng % 360) + 540) % 360 - 180
+
+      // Find the last matching feature (= topmost rendered layer, matching Leaflet's z-order)
+      let matched: AirspaceInfo | null = null
+
+      if (airspaceData) {
+        for (const f of airspaceData.features) {
+          if (pointInFeature(lat, lon, f)) {
+            const p = f.properties as Record<string, string | null>
+            matched = { ...p, _type: 'airspace' } as AirspaceInfo
+          }
+        }
+      }
+      if (parksData) {
+        for (const f of parksData.features) {
+          if (pointInFeature(lat, lon, f)) {
+            const p = f.properties as Record<string, string | null>
+            const name = p?.name_full ?? p?.['名稱'] ?? p?.['NAME'] ?? '國家公園'
+            const regs = p?.['相關規'] ?? null
+            matched = { ...(p ?? {}), name_full: name, 相關規定: regs, _type: 'park' } as AirspaceInfo
+          }
+        }
+      }
+
+      if (matched) onSelect(matched)
+    },
+  })
+  return null
 }
 
 function ClickHandler() {
@@ -224,6 +291,7 @@ export default function MapView() {
         />
 
         <ClickHandler />
+        <RightClickHandler airspaceData={airspaceData} parksData={parksData} onSelect={handleAirspaceClick} />
         <MapCenterUpdater />
         {location && <Marker position={[location.lat, location.lon]} />}
       </MapContainer>
