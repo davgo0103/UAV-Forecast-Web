@@ -15,18 +15,34 @@ type NominatimItem = {
   address?: { country_code?: string }
 }
 
-export async function searchLocation(query: string): Promise<SearchResult[]> {
-  const response = await axios.get('https://nominatim.openstreetmap.org/search', {
+async function nominatimSearch(q: string): Promise<NominatimItem[]> {
+  const res = await axios.get('https://nominatim.openstreetmap.org/search', {
     params: {
-      q: query,
+      q,
       format: 'json',
       limit: 10,
       addressdetails: 1,
       'accept-language': 'zh-TW,zh-Hant,en',
     },
   })
+  return res.data as NominatimItem[]
+}
 
-  const items: NominatimItem[] = response.data
+// Strip trailing address suffixes common in Taiwan (號, 樓, 室, 之X)
+function stripAddressSuffix(q: string): string {
+  return q.replace(/[\d之]+[號樓室F].*$/, '').trim()
+}
+
+export async function searchLocation(query: string): Promise<SearchResult[]> {
+  let items = await nominatimSearch(query)
+
+  // If no results and query looks like a detailed address, retry without unit suffix
+  if (items.length === 0) {
+    const stripped = stripAddressSuffix(query)
+    if (stripped && stripped !== query) {
+      items = await nominatimSearch(stripped)
+    }
+  }
 
   // Sort: Taiwan (tw) first, mainland China (cn) last
   const sorted = [...items].sort((a, b) => {

@@ -1,7 +1,19 @@
 import { useState, useRef, useEffect } from 'react'
 import { Search, X, Loader2 } from 'lucide-react'
-import { searchLocation, SearchResult } from '../services/geocoding'
+import { searchLocation, reverseGeocode, SearchResult } from '../services/geocoding'
 import { useStore } from '../store/useStore'
+
+// Match "lat, lon" or "lat lon" with optional signs and decimals
+const COORD_RE = /^\s*(-?\d{1,3}(?:\.\d+)?)[,\s]+(-?\d{1,3}(?:\.\d+)?)\s*$/
+
+function parseCoords(q: string): { lat: number; lon: number } | null {
+  const m = q.match(COORD_RE)
+  if (!m) return null
+  const lat = parseFloat(m[1])
+  const lon = parseFloat(m[2])
+  if (lat < -90 || lat > 90 || lon < -180 || lon > 180) return null
+  return { lat, lon }
+}
 
 export default function SearchBar() {
   const [query, setQuery] = useState('')
@@ -22,8 +34,20 @@ export default function SearchBar() {
     debounceRef.current = setTimeout(async () => {
       setIsLoading(true)
       try {
-        const data = await searchLocation(query)
-        setResults(data)
+        const coords = parseCoords(query)
+        if (coords) {
+          // Coordinate input — reverse geocode for display name
+          const loc = await reverseGeocode(coords.lat, coords.lon)
+          setResults([{
+            name: loc.name,
+            displayName: `${coords.lat.toFixed(6)}, ${coords.lon.toFixed(6)}`,
+            lat: coords.lat,
+            lon: coords.lon,
+          }])
+        } else {
+          const data = await searchLocation(query)
+          setResults(data)
+        }
         setShowDropdown(true)
       } catch (err) {
         if (import.meta.env.DEV) console.warn('[SearchBar] search failed:', err)
@@ -51,7 +75,7 @@ export default function SearchBar() {
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="搜尋地點（如：合歡山、信義區）"
+          placeholder="搜尋地點或輸入經緯度（25.04, 121.53）"
           className="flex-1 bg-transparent text-white placeholder-slate-500 outline-none min-w-0"
           style={{ fontSize: '16px' }}
         />
