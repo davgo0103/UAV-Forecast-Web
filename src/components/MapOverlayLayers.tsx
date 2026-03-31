@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { TileLayer, GeoJSON } from 'react-leaflet'
 import L from 'leaflet'
-import type { FeatureCollection, Feature } from 'geojson'
+import type { FeatureCollection, Feature, Geometry } from 'geojson'
 import type { PathOptions } from 'leaflet'
 import WindVelocityLayer from './WindVelocityLayer'
 import AircraftLayer from './AircraftLayer'
@@ -16,7 +16,11 @@ export interface LayerState {
   hikingTrails: boolean
 }
 
-export type AirspaceInfo = Record<string, string | null> & { _type: 'airspace' | 'park' }
+export interface AirspaceInfo {
+  [key: string]: unknown
+  _type: 'airspace' | 'park'
+  _geometry?: Geometry
+}
 
 interface Props {
   layers: LayerState
@@ -68,7 +72,7 @@ function makeOnEachAirspace(onAirspaceClick: (info: AirspaceInfo) => void) {
       { sticky: true },
     )
     layer.on('click', () => {
-      onAirspaceClick({ ...p, _type: 'airspace' } as AirspaceInfo)
+      onAirspaceClick({ ...p, _type: 'airspace', _geometry: feature.geometry } as AirspaceInfo)
     })
   }
 }
@@ -86,7 +90,7 @@ function makeOnEachPark(
     )
     layer.on('click', () => {
       const regs = parkRegsMap.get(name) ?? p?.['相關規'] ?? null
-      onAirspaceClick({ ...(p ?? {}), name_full: name, 相關規定: regs, _type: 'park' } as AirspaceInfo)
+      onAirspaceClick({ ...(p ?? {}), name_full: name, 相關規定: regs, _type: 'park', _geometry: feature.geometry } as AirspaceInfo)
     })
   }
 }

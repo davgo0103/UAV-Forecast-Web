@@ -112,3 +112,22 @@ input[type='range']::-webkit-slider-runnable-track {
   border-radius: 9999px;
   background: #1a2540;
 }
+
+/* Airspace highlight — marching ants */
+@keyframes airspace-march {
+  to { stroke-dashoffset: -36; }
+}
+
+@keyframes airspace-glow-pulse {
+  0% { stroke-opacity: 0.1; }
+  50% { stroke-opacity: 0.3; }
+  100% { stroke-opacity: 0.1; }
+}
+
+.airspace-highlight-march {
+  animation: airspace-march 0.8s linear infinite;
+}
+
+.airspace-highlight-glow {
+  animation: airspace-glow-pulse 2s ease-in-out infinite;
+}

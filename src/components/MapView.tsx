@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet'
 import { LatLng } from 'leaflet'
 import type { FeatureCollection, Feature, Polygon, MultiPolygon } from 'geojson'
@@ -88,7 +88,7 @@ function RightClickHandler({ airspaceData, parksData, onSelect }: RightClickHand
         for (const f of airspaceData.features) {
           if (pointInFeature(lat, lon, f)) {
             const p = f.properties as Record<string, string | null>
-            matched = { ...p, _type: 'airspace' } as AirspaceInfo
+            matched = { ...p, _type: 'airspace', _geometry: f.geometry } as AirspaceInfo
           }
         }
       }
@@ -98,7 +98,7 @@ function RightClickHandler({ airspaceData, parksData, onSelect }: RightClickHand
             const p = f.properties as Record<string, string | null>
             const name = p?.name_full ?? p?.['名稱'] ?? p?.['NAME'] ?? '國家公園'
             const regs = p?.['相關規'] ?? null
-            matched = { ...(p ?? {}), name_full: name, 相關規定: regs, _type: 'park' } as AirspaceInfo
+            matched = { ...(p ?? {}), name_full: name, 相關規定: regs, _type: 'park', _geometry: f.geometry } as AirspaceInfo
           }
         }
       }
@@ -106,6 +106,54 @@ function RightClickHandler({ airspaceData, parksData, onSelect }: RightClickHand
       if (matched) onSelect(matched)
     },
   })
+  return null
+}
+
+function AirspaceHighlight({ geometry }: { geometry?: Feature['geometry'] }) {
+  const map = useMap()
+  const layerRef = useRef<{ main: L.GeoJSON; glow: L.GeoJSON } | null>(null)
+
+  useEffect(() => {
+    if (layerRef.current) {
+      map.removeLayer(layerRef.current.main)
+      map.removeLayer(layerRef.current.glow)
+      layerRef.current = null
+    }
+    if (!geometry) return
+
+    // Bottom glow layer
+    const glow = L.geoJSON({ type: 'Feature', properties: {}, geometry } as GeoJSON.Feature, {
+      style: {
+        color: '#ffffff',
+        weight: 6,
+        fillOpacity: 0,
+        opacity: 0.15,
+        className: 'airspace-highlight-glow',
+      },
+    }).addTo(map)
+
+    // Main marching-ants layer
+    const layer = L.geoJSON({ type: 'Feature', properties: {}, geometry } as GeoJSON.Feature, {
+      style: {
+        color: '#ffffff',
+        weight: 2,
+        fillOpacity: 0,
+        opacity: 0.9,
+        dashArray: '10 8',
+        className: 'airspace-highlight-march',
+      },
+    }).addTo(map)
+    layerRef.current = { main: layer, glow }
+
+    return () => {
+      if (layerRef.current) {
+        map.removeLayer(layerRef.current.main)
+        map.removeLayer(layerRef.current.glow)
+        layerRef.current = null
+      }
+    }
+  }, [geometry, map])
+
   return null
 }
 
@@ -151,6 +199,12 @@ async function validateOwmKey(key: string): Promise<boolean> {
   } catch {
     return false
   }
+}
+
+/** Safe string access from AirspaceInfo */
+function str(info: AirspaceInfo, key: string): string | null {
+  const v = info[key]
+  return typeof v === 'string' ? v : null
 }
 
 function InfoRow({ label, value }: { label: string; value: string | null | undefined }) {
@@ -296,6 +350,7 @@ export default function MapView() {
 
         <ClickHandler />
         <RightClickHandler airspaceData={airspaceData} parksData={parksData} onSelect={handleAirspaceClick} />
+        <AirspaceHighlight geometry={selectedAirspace?._geometry} />
         <MapCenterUpdater />
         {location && <Marker position={[location.lat, location.lon]} />}
       </MapContainer>
@@ -304,15 +359,20 @@ export default function MapView() {
       {selectedAirspace && (() => {
         const p = selectedAirspace
         const isPark = p._type === 'park'
-        const name = isPark ? (p.name_full ?? '國家公園') : (p.空域名稱 ?? '未知空域')
+        const name = isPark ? (str(p, 'name_full') ?? '國家公園') : (str(p, '空域名稱') ?? '未知空域')
         const badge = isPark
           ? <span className="text-emerald-400 text-xs">🌿 國家公園（需申請）</span>
-          : (p.限制區 ?? '').includes('紅')
+          : (str(p, '限制區') ?? '').includes('紅')
             ? <span className="text-red-400 text-xs">⛔ 紅區（禁止飛行）</span>
-            : p.zone_type === '商港'
+            : str(p, 'zone_type') === '商港'
               ? <span className="text-slate-400 text-xs">🚢 商港管制區</span>
               : <span className="text-orange-400 text-xs">⚠️ 黃區（限制飛行）</span>
-        const regs = p.相關規定
+        const regs = str(p, '相關規定')
+        const desc = str(p, '空域說明')
+        const authority = str(p, '主管機關名稱')
+        const consult = str(p, '會商機關名稱')
+        const contact = str(p, '聯絡方式')
+        const penalty = str(p, '罰則')
 
         return (
           <div className="absolute bottom-4 left-4 z-[1001] w-72 bg-dark-800 border border-dark-600 rounded-xl shadow-2xl overflow-hidden">
@@ -331,13 +391,13 @@ export default function MapView() {
             </div>
 
             {/* Body */}
-            {(p.空域說明 || p.主管機關名稱 || p.會商機關名稱 || p.聯絡方式 || p.罰則 || regs) && (
+            {(desc || authority || consult || contact || penalty || regs) && (
               <div className="border-t border-dark-600 px-3 py-2 space-y-1.5">
-                <InfoRow label="說明"   value={p.空域說明} />
-                <InfoRow label="主管機關" value={p.主管機關名稱} />
-                <InfoRow label="會商機關" value={p.會商機關名稱} />
-                <InfoRow label="聯絡方式" value={p.聯絡方式} />
-                <InfoRow label="罰則"   value={p.罰則} />
+                <InfoRow label="說明"   value={desc} />
+                <InfoRow label="主管機關" value={authority} />
+                <InfoRow label="會商機關" value={consult} />
+                <InfoRow label="聯絡方式" value={contact} />
+                <InfoRow label="罰則"   value={penalty} />
                 {regs && (
                   <div className="flex gap-2 text-xs leading-relaxed">
                     <span className="text-slate-500 w-14 flex-shrink-0">相關規定</span>
