@@ -115,10 +115,14 @@ function ClickHandler() {
   useMapEvents({
     async click(e: { latlng: LatLng }) {
       const { lat } = e.latlng
-      // Normalize longitude to [-180, 180] in case map was panned past the antimeridian
       const lng = ((e.latlng.lng % 360) + 540) % 360 - 180
-      const loc = await reverseGeocode(lat, lng)
-      setLocation(loc)
+      try {
+        const loc = await reverseGeocode(lat, lng)
+        setLocation(loc)
+      } catch {
+        // Reverse geocode failed — use coordinates as name
+        setLocation({ lat, lon: lng, name: `${lat.toFixed(4)}, ${lng.toFixed(4)}` })
+      }
     },
   })
   return null

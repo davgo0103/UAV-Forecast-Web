@@ -25,6 +25,7 @@ export function useWeatherData() {
     if (!location) return
 
     let isFirstLoad = true
+    let cancelled = false
 
     async function load() {
       if (!location) return
@@ -43,6 +44,7 @@ export function useWeatherData() {
           location.lat,
           location.lon
         )
+        if (cancelled) return
 
         const roundedElev = Math.round(elevation)
 
@@ -71,9 +73,9 @@ export function useWeatherData() {
         )
         setAltitudeWindProfile(profile)
       } catch (e) {
+        if (cancelled) return
         const msg = e instanceof Error ? e.message : String(e)
         const reason: string = (e as { response?: { data?: { reason?: string } } })?.response?.data?.reason ?? ''
-        // Give a more specific error if possible
         if (reason.toLowerCase().includes('limit')) {
           const r = reason.toLowerCase()
           const resetHint = r.includes('minute') ? '請一分鐘後再試' : r.includes('hour') ? '請一小時後再試' : '請明天再試'
@@ -87,15 +89,14 @@ export function useWeatherData() {
         }
         console.error('[useWeatherData]', e)
       } finally {
-        setIsLoadingWeather(false)
+        if (!cancelled) setIsLoadingWeather(false)
       }
     }
 
     load()
 
-    // Auto-refresh every 30 minutes while page stays open
     const id = setInterval(load, 30 * 60 * 1000)
-    return () => clearInterval(id)
+    return () => { cancelled = true; clearInterval(id) }
   }, [location]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Recalculate altitude wind profile when AGL changes

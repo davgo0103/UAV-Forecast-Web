@@ -15,7 +15,8 @@ interface WindGridCache {
 // Cache key includes coarse 20° region so panning to a different area doesn't
 // return stale data from a previous location.
 function cacheKey(step: number, bounds: WindGridBounds): string {
-  const block = 20
+  // Snap bounds to multiples of step×10 (or at least 10°) so nearby pans still hit cache
+  const block = Math.max(step * 10, 10)
   const n = Math.ceil(bounds.north / block) * block
   const s = Math.floor(bounds.south / block) * block
   const w = Math.floor(bounds.west / block) * block

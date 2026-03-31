@@ -21,6 +21,7 @@ export default function SearchBar() {
   const [isLoading, setIsLoading] = useState(false)
   const [showDropdown, setShowDropdown] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const reqIdRef = useRef(0)
   const setLocation = useStore((s) => s.setLocation)
 
   useEffect(() => {
@@ -32,27 +33,31 @@ export default function SearchBar() {
 
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(async () => {
+      const id = ++reqIdRef.current
       setIsLoading(true)
       try {
         const coords = parseCoords(query)
+        let data: SearchResult[]
         if (coords) {
-          // Coordinate input — reverse geocode for display name
           const loc = await reverseGeocode(coords.lat, coords.lon)
-          setResults([{
+          data = [{
             name: loc.name,
             displayName: `${coords.lat.toFixed(6)}, ${coords.lon.toFixed(6)}`,
             lat: coords.lat,
             lon: coords.lon,
-          }])
+          }]
         } else {
-          const data = await searchLocation(query)
-          setResults(data)
+          data = await searchLocation(query)
         }
+        // Discard stale results if a newer request was fired
+        if (id !== reqIdRef.current) return
+        setResults(data)
         setShowDropdown(true)
       } catch (err) {
+        if (id !== reqIdRef.current) return
         if (import.meta.env.DEV) console.warn('[SearchBar] search failed:', err)
       } finally {
-        setIsLoading(false)
+        if (id === reqIdRef.current) setIsLoading(false)
       }
     }, 400)
   }, [query])
