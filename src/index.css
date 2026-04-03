@@ -23,6 +23,9 @@ body {
 /* Leaflet dark mode */
 .leaflet-container {
   background: #0f1629 !important;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .leaflet-control-zoom a {

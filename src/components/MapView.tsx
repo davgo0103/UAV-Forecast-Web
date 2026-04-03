@@ -78,6 +78,7 @@ interface RightClickHandlerProps {
 function RightClickHandler({ airspaceData, parksData, onSelect }: RightClickHandlerProps) {
   useMapEvents({
     contextmenu(e) {
+      e.originalEvent.preventDefault()
       const { lat } = e.latlng
       const lon = ((e.latlng.lng % 360) + 540) % 360 - 180
 
