@@ -1,0 +1,22 @@
+{
+  "name": "UAV Forecast Taiwan｜台灣無人機飛行天氣預報",
+  "short_name": "UAV Forecast",
+  "description": "台灣無人機飛行天氣預報工具，即時查詢風速、降水、能見度、空域管制。",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0e1a",
+  "theme_color": "#0a0e1a",
+  "lang": "zh-TW",
+  "icons": [
+    {
+      "src": "/drone.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ]
+}
