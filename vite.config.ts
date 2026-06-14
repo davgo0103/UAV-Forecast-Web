@@ -20,6 +20,11 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/opensky-auth/, ''),
       },
+      '/opensky-api': {
+        target: 'https://opensky-network.org',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/opensky-api/, ''),
+      },
     },
   },
   preview: {
@@ -38,6 +43,11 @@ export default defineConfig({
         target: 'https://auth.opensky-network.org',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/opensky-auth/, ''),
+      },
+      '/opensky-api': {
+        target: 'https://opensky-network.org',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/opensky-api/, ''),
       },
     },
   },

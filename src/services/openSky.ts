@@ -89,7 +89,7 @@ async function doFetch(
   token?: string
 ): Promise<{ data: Aircraft[]; creditsRemaining: number | null }> {
   const headers = token ? { Authorization: `Bearer ${token}` } : {}
-  const res = await axios.get('https://opensky-network.org/api/states/all', {
+  const res = await axios.get('/opensky-api/api/states/all', {
     timeout: 10000,
     headers,
     params: { lamin: bounds.south, lomin: bounds.west, lamax: bounds.north, lomax: bounds.east },
