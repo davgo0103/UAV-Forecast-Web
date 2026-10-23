@@ -19,12 +19,21 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 })
 
+// CARTO basemaps now require an API key (tiles without one are watermarked).
+// Fall back to Esri Dark Gray when VITE_CARTO_API_KEY is not set.
+const cartoKey = import.meta.env.VITE_CARTO_API_KEY ?? ''
+
 const BASE_MAPS: Record<BaseMapKey, { url: string; attribution: string }> = {
-  dark: {
-    url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-    attribution:
-      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>',
-  },
+  dark: cartoKey
+    ? {
+        url: `https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}{r}.png?key=${cartoKey}`,
+        attribution:
+          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>',
+      }
+    : {
+        url: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+        attribution: 'Tiles &copy; Esri &mdash; Esri, HERE, Garmin, &copy; OpenStreetMap contributors, and the GIS User Community',
+      },
   satellite: {
     url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
     attribution:
@@ -335,7 +344,7 @@ export default function MapView() {
           key={baseMap}
           url={BASE_MAPS[baseMap].url}
           attribution={BASE_MAPS[baseMap].attribution}
-          maxNativeZoom={baseMap === 'hiking' ? 17 : 19}
+          maxNativeZoom={baseMap === 'hiking' ? 17 : baseMap === 'dark' && !cartoKey ? 16 : 19}
           noWrap
         />
 

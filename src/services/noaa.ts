@@ -58,6 +58,21 @@ export function getEffectiveKp(kpData: KpData, targetTimeLocal: string, tz = 'As
   }
 }
 
+/**
+ * Normalise the Kp forecast product into [time, kp] tuples.
+ * NOAA switched from array-of-arrays (header row first) to array-of-objects
+ * ({ time_tag, kp, observed, noaa_scale }); accept both.
+ */
+function parseKpRows(data: unknown): [string, string][] {
+  if (!Array.isArray(data)) return []
+  if (Array.isArray(data[0])) {
+    return (data as string[][]).slice(1).map(row => [row[0], row[1] ?? '0'])
+  }
+  return (data as { time_tag?: string; kp?: number | string }[])
+    .filter(row => row?.time_tag != null)
+    .map(row => [row.time_tag as string, String(row.kp ?? 0)])
+}
+
 export async function fetchKpIndex(): Promise<KpData> {
   // Use official 3-hourly Kp product (observed + predicted in one file)
   let currentKp = 0
@@ -66,9 +81,8 @@ export async function fetchKpIndex(): Promise<KpData> {
   try {
     // This file contains both observed (past) and predicted (future) 3-hourly Kp values
     const res = await axios.get(`${NOAA_BASE}/products/noaa-planetary-k-index-forecast.json`)
-    const data: string[][] = res.data
-    if (Array.isArray(data) && data.length > 1) {
-      const rows = data.slice(1) // skip header row
+    const rows = parseKpRows(res.data)
+    if (rows.length) {
       const nowUtc = dayjs.utc()
 
       // Find the entry (observed or predicted) whose 3-hour window contains "now".
